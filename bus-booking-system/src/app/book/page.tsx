@@ -4,8 +4,20 @@ import React, { useState } from 'react';
 import { Armchair, Info, Lock, ArrowRight, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-// Dynamically generate 10 rows of seats (40 seats total: A, B aisle C, D)
-const GENERATED_SEATS = [];
+// 1. Define the exact shape of our data so TypeScript is happy
+type SeatType = {
+  id: string;
+  row: number;
+  col: string;
+  type: string;
+  status: string;
+  price: number;
+};
+
+// 2. Apply that type to our array
+const GENERATED_SEATS: SeatType[] = [];
+
+// Dynamically generate 10 rows of seats (40 seats total)
 for (let r = 1; r <= 10; r++) {
   ['A', 'B', 'C', 'D'].forEach(col => {
     let type = 'STANDARD';
@@ -180,7 +192,7 @@ export default function BookingPage() {
   );
 }
 
-function SeatButton({ seat, isSelected, onClick }: { seat: any, isSelected: boolean, onClick: () => void }) {
+function SeatButton({ seat, isSelected, onClick }: { seat: SeatType, isSelected: boolean, onClick: () => void }) {
   let style = "bg-white border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 cursor-pointer";
 
   if (seat.status === 'BOOKED') {
