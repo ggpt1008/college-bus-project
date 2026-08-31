@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, Search, BusFront, ShieldCheck, Clock, CreditCard, UserCircle, LogOut, History } from "lucide-react";
+import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
@@ -41,20 +41,27 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    // Default to Patiala/Chandigarh if they leave it blank for the demo
-    const searchFrom = from || 'Patiala';
-    const searchTo = to || 'Chandigarh';
-    const newSearch = { from: searchFrom, to: searchTo };
+    // 1. Validation: Check if the boxes are empty!
+    if (!from.trim() || !to.trim()) {
+      alert("Please enter both a 'From' and 'To' destination to search for buses.");
+      return; // Stop the function here so it doesn't change pages
+    }
 
-    // Add new search to the front, remove duplicates, keep only top 3
+    const newSearch = { from: from.trim(), to: to.trim() };
+
+    // 2. Add to history
     const updatedSearches = [
       newSearch, 
-      ...recentSearches.filter(s => s.from !== searchFrom || s.to !== searchTo)
+      ...recentSearches.filter(s => 
+        s.from.toLowerCase() !== newSearch.from.toLowerCase() || 
+        s.to.toLowerCase() !== newSearch.to.toLowerCase()
+      )
     ].slice(0, 3);
     
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
     
+    // 3. Move to the next page
     router.push('/search');
   };
 
@@ -180,7 +187,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* FEATURES SECTION (Kept the same) */}
+      {/* FEATURES SECTION */}
       <section className="py-20 bg-slate-50 px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
