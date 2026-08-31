@@ -8,25 +8,19 @@ export default function Home() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // State for our search inputs
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  
-  // State for our recent searches
   const [recentSearches, setRecentSearches] = useState<{from: string, to: string}[]>([]);
 
   useEffect(() => {
-    // 1. Check Login Status
     const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const role = localStorage.getItem('userRole');
     if (loggedIn && role === 'PASSENGER') setIsLoggedIn(true);
 
-    // 2. Load Recent Searches from memory
     const savedSearches = localStorage.getItem('recentSearches');
     if (savedSearches) {
       setRecentSearches(JSON.parse(savedSearches));
     } else {
-      // If no history, show popular routes as default
       setRecentSearches([
         { from: 'Patiala', to: 'Chandigarh' },
         { from: 'Delhi', to: 'Manali' },
@@ -40,16 +34,17 @@ export default function Home() {
     setIsLoggedIn(false);
   };
 
-  const handleSearch = () => {
-    // 1. Validation: Check if the boxes are empty!
-    if (!from.trim() || !to.trim()) {
-      alert("Please enter both a 'From' and 'To' destination to search for buses.");
-      return; // Stop the function here so it doesn't change pages
-    }
+  // Notice we now accept the Form Event
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault(); // This stops the page from reloading
 
-    const newSearch = { from: from.trim(), to: to.trim() };
+    const searchFrom = from.trim();
+    const searchTo = to.trim();
 
-    // 2. Add to history
+    if (!searchFrom || !searchTo) return;
+
+    const newSearch = { from: searchFrom, to: searchTo };
+
     const updatedSearches = [
       newSearch, 
       ...recentSearches.filter(s => 
@@ -61,8 +56,8 @@ export default function Home() {
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
     
-    // 3. Move to the next page
-    router.push('/search');
+    // We now attach your typed cities to the URL!
+    router.push(`/search?from=${searchFrom}&to=${searchTo}`);
   };
 
   const handleRecentClick = (search: {from: string, to: string}) => {
@@ -72,7 +67,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* NAVIGATION BAR */}
       <nav className="flex items-center justify-between px-8 py-4 bg-white shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-2 text-blue-700 cursor-pointer" onClick={() => router.push('/')}>
           <BusFront size={28} className="text-blue-600" />
@@ -91,10 +85,7 @@ export default function Home() {
                 <UserCircle size={20} className="text-blue-600" /> Hi, Girikshit!
               </span>
               <a href="#" className="font-semibold text-blue-600 hover:underline hidden md:block">My Bookings</a>
-              <button 
-                onClick={handleLogout}
-                className="px-4 py-2 font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2"
-              >
+              <button onClick={handleLogout} className="px-4 py-2 font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2">
                 <LogOut size={16} /> Logout
               </button>
             </div>
@@ -107,7 +98,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* HERO SECTION */}
       <main className="relative flex flex-col items-center justify-center px-4 pt-20 pb-32 text-center overflow-hidden bg-gradient-to-b from-slate-900 to-blue-900">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
            <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
@@ -121,9 +111,10 @@ export default function Home() {
           Search, book, track, and manage every bus journey from one intelligent platform.
         </p>
 
-        {/* SEARCH FLOATING CARD */}
         <div className="relative z-20 w-full max-w-5xl mt-12 bg-white rounded-2xl shadow-2xl p-4 md:p-6 border border-slate-100">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4 items-end">
+          
+          {/* WE CHANGED THIS TO A REAL FORM */}
+          <form onSubmit={handleSearch} className="grid grid-cols-1 gap-4 md:grid-cols-4 items-end">
             
             <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">From</label>
@@ -134,6 +125,7 @@ export default function Home() {
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
                   placeholder="Leaving from..." 
+                  required /* FORCES INPUT */
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-900 font-medium" 
                 />
               </div>
@@ -148,6 +140,7 @@ export default function Home() {
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                   placeholder="Going to..." 
+                  required /* FORCES INPUT */
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-900 font-medium" 
                 />
               </div>
@@ -157,17 +150,16 @@ export default function Home() {
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="date" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-700 font-medium" />
+                <input type="date" required className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-700 font-medium" />
               </div>
             </div>
 
-            <button onClick={handleSearch} className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95">
+            <button type="submit" className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95">
               <Search size={20} />
               Search Buses
             </button>
-          </div>
+          </form>
 
-          {/* RECENT SEARCHES SECTION */}
           <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
             <span className="text-sm font-semibold text-slate-400 flex items-center gap-1">
               <History size={16} /> Recent / Popular:
@@ -187,7 +179,6 @@ export default function Home() {
         </div>
       </main>
 
-      {/* FEATURES SECTION */}
       <section className="py-20 bg-slate-50 px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
