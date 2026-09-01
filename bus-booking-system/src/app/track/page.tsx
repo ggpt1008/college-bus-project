@@ -1,162 +1,124 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { BusFront, ArrowLeft, Gauge, RefreshCw, Wifi } from 'lucide-react';
+import { BusFront, ArrowLeft, Navigation, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { REAL_WORLD_BUSES, RealBus } from '@/data/buses';
 
-// THIS IS THE MAGIC FIX: We load the whole map component safely!
-const DynamicLiveMap = dynamic(() => import('./LiveMap'), { 
-  ssr: false, 
-  loading: () => <div className="w-full h-full flex items-center justify-center text-slate-500">Loading Radar Module...</div> 
+const DynamicLiveMap = dynamic(() => import('./LiveMap'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center text-slate-500">Loading GPS Module...</div>
 });
 
-interface LiveVehicle {
-  id: string;
-  label: string;
-  lat: number;
-  lng: number;
-  speed: number;
-  bearing: number;
-  timestamp: number;
-}
-
-export default function LiveTrackingPage() {
+export default function TrackPage() {
   const router = useRouter();
-  const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<LiveVehicle | null>(null);
-  const [dataSource, setDataSource] = useState('Connecting to GTFS-RT Stream...');
-  const [lastSync, setLastSync] = useState<string>('');
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  const fetchStream = async () => {
-    setIsUpdating(true);
-    try {
-      const res = await fetch('/api/live-buses');
-      if (res.ok) {
-        const data = await res.json();
-        setVehicles(data.buses);
-        setDataSource(data.source);
-        setLastSync(new Date().toLocaleTimeString());
-
-        if (selectedVehicle) {
-          const updated = data.buses.find((v: LiveVehicle) => v.id === selectedVehicle.id);
-          if (updated) setSelectedVehicle(updated);
-        } else if (data.buses.length > 0) {
-          setSelectedVehicle(data.buses[0]);
-        }
-      }
-    } catch (e) {
-      console.error("Live streaming failed", e);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  const [selectedBus, setSelectedBus] = useState<RealBus | null>(null);
+  const [currentCoord, setCurrentCoord] = useState<[number, number]>([0, 0]);
+  const [progressIndex, setProgressIndex] = useState(0);
 
   useEffect(() => {
-    fetchStream();
-    const interval = setInterval(fetchStream, 4000); 
-    return () => clearInterval(interval);
+    // 1. Grab the specific bus you clicked on from the URL
+    const params = new URLSearchParams(window.location.search);
+    const busId = params.get('busId');
+
+    let targetBus = REAL_WORLD_BUSES[0]; // Fallback to first bus if URL is empty
+    if (busId) {
+      const found = REAL_WORLD_BUSES.find(b => b.id === busId);
+      if (found) targetBus = found;
+    }
+
+    setSelectedBus(targetBus);
+    setCurrentCoord([targetBus.gpsRoute[0].lat, targetBus.gpsRoute[0].lng]);
   }, []);
+
+  useEffect(() => {
+    if (!selectedBus) return;
+
+    // 2. Simulate live GPS movement between the cities
+    const interval = setInterval(() => {
+      setProgressIndex((prev) => {
+        const nextIndex = (prev + 1) % selectedBus.gpsRoute.length;
+        const target = selectedBus.gpsRoute[nextIndex];
+        setCurrentCoord([target.lat, target.lng]);
+        return nextIndex;
+      });
+    }, 4000); // Updates position every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedBus]);
+
+  if (!selectedBus) return null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col font-sans">
       
       <nav className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/')} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition">
+          <button onClick={() => router.back()} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition">
             <ArrowLeft size={20} className="text-white" />
           </button>
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <BusFront size={22} className="text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">OmniBus Real-Time Radar</span>
+            <div className="bg-blue-600 p-2 rounded-lg"><BusFront size={22} className="text-white" /></div>
+            <span className="text-xl font-bold tracking-tight text-white hidden sm:block">Route Tracker</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full">
-            <Wifi size={14} className="text-red-500 animate-pulse" />
-            <span className="text-slate-300">{dataSource}</span>
-          </span>
-          {lastSync && (
-            <span className="hidden sm:inline text-slate-500">
-              Synced: <strong className="text-slate-300">{lastSync}</strong>
-            </span>
-          )}
         </div>
       </nav>
 
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* Left Sidebar */}
-        <div className="lg:col-span-1 space-y-4 flex flex-col h-[700px]">
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Live Fleet Control</h2>
-            <div className="text-2xl font-black text-white flex items-center justify-between">
-              <span>{vehicles.length} Buses</span>
-              {isUpdating && <RefreshCw size={16} className="animate-spin text-blue-500" />}
+        {/* Left Side: Route Telemetry */}
+        <div className="lg:col-span-1 space-y-4 flex flex-col">
+          <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg">
+            <span className="text-[10px] font-mono font-bold text-blue-400 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-800/40 uppercase">
+              {selectedBus.id}
+            </span>
+            <h2 className="text-xl font-bold text-white mt-2">{selectedBus.operator}</h2>
+            <p className="text-xs text-slate-400 mb-4">{selectedBus.type}</p>
+
+            <div className="space-y-4 border-t border-slate-800 pt-4 relative">
+              <div className="absolute left-[11px] top-[26px] bottom-6 w-0.5 bg-slate-700 z-0"></div>
+              
+              <div className="flex gap-4 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-slate-800 border-2 border-blue-500 flex items-center justify-center shrink-0 mt-1">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{selectedBus.from}</p>
+                  <p className="text-xs text-slate-500">{selectedBus.departure}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center shrink-0 mt-1">
+                  <MapPin size={12} className="text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{selectedBus.to}</p>
+                  <p className="text-xs text-slate-500">{selectedBus.arrival}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {selectedVehicle && (
-            <div className="bg-blue-950/40 border border-blue-800/60 p-4 rounded-xl space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] font-mono font-bold text-blue-400 bg-blue-900/60 px-2 py-0.5 rounded">
-                    {selectedVehicle.id}
-                  </span>
-                  <h3 className="font-bold text-white text-base mt-1">{selectedVehicle.label}</h3>
-                </div>
-                <div className="text-right font-mono">
-                  <div className="text-xs text-green-400 flex items-center gap-1 justify-end">
-                    <Gauge size={12} /> {selectedVehicle.speed} km/h
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-blue-900/40 text-xs text-slate-400 space-y-1">
-                <p className="flex justify-between">
-                  <span>Coordinates:</span>
-                  <span className="text-slate-200 font-mono">{selectedVehicle.lat.toFixed(4)}, {selectedVehicle.lng.toFixed(4)}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Bearing:</span>
-                  <span className="text-slate-200 font-mono">{selectedVehicle.bearing}°</span>
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-y-auto p-2 space-y-2">
-            <p className="text-[11px] font-bold text-slate-500 uppercase px-2 py-1">Active Vehicles</p>
-            {vehicles.map((bus) => (
-              <div
-                key={bus.id}
-                onClick={() => setSelectedVehicle(bus)}
-                className={`p-3 rounded-lg cursor-pointer transition border text-sm ${
-                  selectedVehicle?.id === bus.id
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-md'
-                    : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <div className="flex justify-between font-bold">
-                  <span>{bus.label}</span>
-                  <span className="font-mono text-xs text-green-400">{bus.speed} km/h</span>
-                </div>
-                <p className="text-xs opacity-75 font-mono mt-0.5">{bus.id}</p>
-              </div>
-            ))}
+          <div className="bg-blue-950/40 border border-blue-800/60 p-4 rounded-xl">
+             <div className="flex justify-between text-xs font-mono text-slate-300">
+               <span>Status: <strong className="text-green-400">EN ROUTE</strong></span>
+               <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> GPS Live</span>
+             </div>
+             <p className="text-sm text-white mt-3 font-medium flex items-center gap-2">
+               <Navigation size={16} className="text-blue-400"/>
+               Next Stop: {selectedBus.gpsRoute[progressIndex]?.stopName}
+             </p>
           </div>
         </div>
 
-        {/* Right Map Module */}
+        {/* Right Side: Map */}
         <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative min-h-[500px] h-[700px]">
            <DynamicLiveMap 
-             vehicles={vehicles} 
-             selectedVehicle={selectedVehicle} 
-             onVehicleSelect={setSelectedVehicle} 
+             bus={selectedBus} 
+             currentCoord={currentCoord} 
+             progressIndex={progressIndex} 
            />
         </div>
       </div>
