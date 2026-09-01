@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { BusFront, ArrowLeft, Navigation, Gauge, RefreshCw, Radio, MapPin } from 'lucide-react';
+import { BusFront, ArrowLeft, Gauge, RefreshCw, Wifi } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
 
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false });
-const Popup = dynamic(() => import('react-leaflet').then(m => m.Popup), { ssr: false });
+// THIS IS THE MAGIC FIX: We load the whole map component safely!
+const DynamicLiveMap = dynamic(() => import('./LiveMap'), { 
+  ssr: false, 
+  loading: () => <div className="w-full h-full flex items-center justify-center text-slate-500">Loading Radar Module...</div> 
+});
 
 interface LiveVehicle {
   id: string;
@@ -29,24 +29,6 @@ export default function LiveTrackingPage() {
   const [lastSync, setLastSync] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Initialize Leaflet Default Marker Icon for Next.js SSR
-  const [customIcon, setCustomIcon] = useState<any>(null);
-
-  useEffect(() => {
-    import('leaflet').then((L) => {
-      setCustomIcon(
-        new L.Icon({
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-        })
-      );
-    });
-  }, []);
-
   const fetchStream = async () => {
     setIsUpdating(true);
     try {
@@ -57,7 +39,6 @@ export default function LiveTrackingPage() {
         setDataSource(data.source);
         setLastSync(new Date().toLocaleTimeString());
 
-        // Keep active selection updated
         if (selectedVehicle) {
           const updated = data.buses.find((v: LiveVehicle) => v.id === selectedVehicle.id);
           if (updated) setSelectedVehicle(updated);
@@ -74,14 +55,13 @@ export default function LiveTrackingPage() {
 
   useEffect(() => {
     fetchStream();
-    const interval = setInterval(fetchStream, 4000); // Poll every 4 seconds
+    const interval = setInterval(fetchStream, 4000); 
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col font-sans">
       
-      {/* Top Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/')} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition">
@@ -97,7 +77,7 @@ export default function LiveTrackingPage() {
 
         <div className="flex items-center gap-3 text-xs font-mono">
           <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full">
-            <Radio size={14} className="text-red-500 animate-pulse" />
+            <Wifi size={14} className="text-red-500 animate-pulse" />
             <span className="text-slate-300">{dataSource}</span>
           </span>
           {lastSync && (
@@ -108,10 +88,9 @@ export default function LiveTrackingPage() {
         </div>
       </nav>
 
-      {/* Main Radar Layout */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* Left Telemetry Sidebar */}
+        {/* Left Sidebar */}
         <div className="lg:col-span-1 space-y-4 flex flex-col h-[700px]">
           <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Live Fleet Control</h2>
@@ -121,7 +100,6 @@ export default function LiveTrackingPage() {
             </div>
           </div>
 
-          {/* Selected Vehicle Card */}
           {selectedVehicle && (
             <div className="bg-blue-950/40 border border-blue-800/60 p-4 rounded-xl space-y-3">
               <div className="flex justify-between items-start">
@@ -151,7 +129,6 @@ export default function LiveTrackingPage() {
             </div>
           )}
 
-          {/* Fleet Vehicle List */}
           <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-y-auto p-2 space-y-2">
             <p className="text-[11px] font-bold text-slate-500 uppercase px-2 py-1">Active Vehicles</p>
             {vehicles.map((bus) => (
@@ -166,7 +143,7 @@ export default function LiveTrackingPage() {
               >
                 <div className="flex justify-between font-bold">
                   <span>{bus.label}</span>
-                  <span className="font-mono text-xs">{bus.speed} km/h</span>
+                  <span className="font-mono text-xs text-green-400">{bus.speed} km/h</span>
                 </div>
                 <p className="text-xs opacity-75 font-mono mt-0.5">{bus.id}</p>
               </div>
@@ -174,36 +151,13 @@ export default function LiveTrackingPage() {
           </div>
         </div>
 
-        {/* Right Dynamic Live Map */}
+        {/* Right Map Module */}
         <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative min-h-[500px] h-[700px]">
-          {typeof window !== 'undefined' && customIcon && (
-            <MapContainer
-              center={selectedVehicle ? [selectedVehicle.lat, selectedVehicle.lng] : [28.6139, 77.2090]}
-              zoom={13}
-              scrollWheelZoom={true}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-
-              {vehicles.map((bus) => (
-                <Marker
-                  key={bus.id}
-                  position={[bus.lat, bus.lng]}
-                  icon={customIcon}
-                  eventHandlers={{
-                    click: () => setSelectedVehicle(bus),
-                  }}
-                >
-                  <Popup className="text-slate-900 font-sans">
-                    <strong className="text-base font-bold text-blue-700">{bus.label}</strong><br />
-                    <span className="font-mono text-xs text-slate-600">ID: {bus.id}</span><br />
-                    <span className="font-semibold text-xs">Velocity: {bus.speed} km/h</span><br />
-                    <span className="text-[10px] text-green-700 font-bold">● Active GTFS Stream</span>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          )}
+           <DynamicLiveMap 
+             vehicles={vehicles} 
+             selectedVehicle={selectedVehicle} 
+             onVehicleSelect={setSelectedVehicle} 
+           />
         </div>
       </div>
     </div>
