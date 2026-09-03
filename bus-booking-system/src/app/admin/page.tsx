@@ -1,267 +1,71 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, Bus, Map as MapIcon, Users, CalendarDays, 
-  BarChart3, Settings, AlertTriangle, TrendingUp,
-  Activity, Plus, Edit, Trash2, Construction
-} from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity, AlertTriangle, ArrowRight, BarChart3, Bus, CalendarDays, Check, ChevronDown, CircleDollarSign, Clock3, Download, Edit3, FileText, LayoutDashboard, Map, Plus, Route, Search, Settings, ShieldCheck, Trash2, TrendingUp, UserRound, Users, X } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-// Mock Analytics Data
-const chartData = [
-  { name: 'Mon', bookings: 120, revenue: 15000 },
-  { name: 'Tue', bookings: 150, revenue: 18000 },
-  { name: 'Wed', bookings: 180, revenue: 22000 },
-  { name: 'Thu', bookings: 140, revenue: 17000 },
-  { name: 'Fri', bookings: 250, revenue: 32000 },
-  { name: 'Sat', bookings: 320, revenue: 45000 },
-  { name: 'Sun', bookings: 280, revenue: 38000 },
+type Tab = 'Dashboard' | 'Fleet Management' | 'Routes & Stops' | 'Drivers' | 'Schedules' | 'Reports' | 'System Settings';
+type VehicleStatus = 'Active' | 'En Route' | 'Maintenance';
+type Vehicle = { id: string; plate: string; type: string; seats: number; status: VehicleStatus };
+
+type Driver = { name: string; id: string; phone: string; expiry: string; route: string; duty: 'On Shift' | 'Off Duty'; rating: string };
+
+const tabs: { label: Tab; icon: React.ReactNode }[] = [
+  { label: 'Dashboard', icon: <LayoutDashboard size={19} /> }, { label: 'Fleet Management', icon: <Bus size={19} /> }, { label: 'Routes & Stops', icon: <Map size={19} /> }, { label: 'Drivers', icon: <Users size={19} /> }, { label: 'Schedules', icon: <CalendarDays size={19} /> }, { label: 'Reports', icon: <BarChart3 size={19} /> }, { label: 'System Settings', icon: <Settings size={19} /> },
 ];
+const revenueData = [{ name: 'Mon', revenue: 15000, bookings: 120 }, { name: 'Tue', revenue: 18000, bookings: 150 }, { name: 'Wed', revenue: 22000, bookings: 180 }, { name: 'Thu', revenue: 17000, bookings: 140 }, { name: 'Fri', revenue: 32000, bookings: 250 }, { name: 'Sat', revenue: 45000, bookings: 320 }, { name: 'Sun', revenue: 38000, bookings: 280 }];
+const initialVehicles: Vehicle[] = [{ id: 'BUS-101', plate: 'PB-10-AB-1234', type: 'AC Seater', seats: 42, status: 'En Route' }, { id: 'BUS-104', plate: 'PB-13-GH-8821', type: 'Volvo AC', seats: 44, status: 'Active' }, { id: 'BUS-209', plate: 'PB-22-KL-1088', type: 'Non-AC Seater', seats: 52, status: 'Active' }, { id: 'BUS-315', plate: 'PB-31-MN-4412', type: 'Sleeper', seats: 30, status: 'Maintenance' }, { id: 'BUS-402', plate: 'PB-40-QR-7770', type: 'Electric AC', seats: 40, status: 'Active' }];
+const drivers: Driver[] = [{ name: 'Rajesh Kumar', id: 'D-014', phone: '+91 98765 43210', expiry: '12 Mar 2028', route: 'Patiala → Chandigarh', duty: 'On Shift', rating: '4.9' }, { name: 'Amit Singh', id: 'D-088', phone: '+91 98111 20045', expiry: '04 Nov 2027', route: 'Delhi → Manali', duty: 'On Shift', rating: '4.7' }, { name: 'Gurpreet Kaur', id: 'D-031', phone: '+91 99887 12003', expiry: '19 Jun 2026', route: 'Chandigarh → Shimla', duty: 'Off Duty', rating: '4.8' }, { name: 'Vikram Malhotra', id: 'D-052', phone: '+91 98989 77661', expiry: '22 Jan 2029', route: 'Rajpura → Amritsar', duty: 'Off Duty', rating: '4.6' }];
+const routes = [{ id: 'R-08', from: 'Patiala', to: 'Chandigarh', stops: ['Rajpura Bypass', 'Zirakpur'], fare: 650, modifier: 'Peak +10%' }, { id: 'R-14', from: 'Delhi', to: 'Manali', stops: ['Chandigarh', 'Mandi'], fare: 1450, modifier: 'Weekend +15%' }, { id: 'R-21', from: 'Chandigarh', to: 'Shimla', stops: ['Panchkula', 'Kalka'], fare: 850, modifier: 'None' }];
 
 export default function AdminDashboard() {
-  // We use this state to track which sidebar button is clicked
-  const [activeTab, setActiveTab] = useState('Dashboard');
-  
-  const [conflictResult, setConflictResult] = useState<'IDLE' | 'CHECKING' | 'CONFLICT'>('IDLE');
+  const [activeTab, setActiveTab] = useState<Tab>('Dashboard');
+  const [vehicles, setVehicles] = useState(initialVehicles);
+  const [vehicleFilter, setVehicleFilter] = useState('All');
+  const [vehicleSearch, setVehicleSearch] = useState('');
+  const [isBusModalOpen, setIsBusModalOpen] = useState(false);
+  const [toast, setToast] = useState('');
+  const [routeStops, setRouteStops] = useState(['Rajpura Bypass', 'Zirakpur']);
+  const [newStop, setNewStop] = useState('');
+  const [scheduleCheck, setScheduleCheck] = useState<'IDLE' | 'CONFLICT' | 'PUBLISHED'>('IDLE');
+  const [reportRange, setReportRange] = useState('Last 7 days');
+  const [commission, setCommission] = useState('8');
+  const [tax, setTax] = useState('5');
 
-  const handleCreateSchedule = (e: React.FormEvent) => {
-    e.preventDefault();
-    setConflictResult('CHECKING');
-    setTimeout(() => {
-      setConflictResult('CONFLICT');
-    }, 1500);
-  };
+  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2500); };
+  const filteredVehicles = vehicles.filter((vehicle) => (vehicleFilter === 'All' || vehicle.status === vehicleFilter) && `${vehicle.id} ${vehicle.plate} ${vehicle.type}`.toLowerCase().includes(vehicleSearch.toLowerCase()));
+  const publishSchedule = (event: React.FormEvent) => { event.preventDefault(); setScheduleCheck('CONFLICT'); };
+  const addStop = () => { if (newStop.trim()) { setRouteStops((stops) => [...stops, newStop.trim()]); setNewStop(''); } };
 
-  return (
-    <div className="min-h-screen bg-slate-100 flex font-sans text-slate-900">
-      
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col">
-        <div className="p-6 flex items-center gap-2 text-white border-b border-slate-800">
-          <Bus size={24} className="text-blue-500" />
-          <span className="text-xl font-bold tracking-tight">OmniAdmin</span>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NavItem icon={<Bus size={20} />} label="Fleet Management" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NavItem icon={<MapIcon size={20} />} label="Routes & Stops" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NavItem icon={<Users size={20} />} label="Drivers" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NavItem icon={<CalendarDays size={20} />} label="Schedules" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NavItem icon={<BarChart3 size={20} />} label="Reports" activeTab={activeTab} setActiveTab={setActiveTab} />
-        </nav>
-        <div className="p-4 border-t border-slate-800">
-          <NavItem icon={<Settings size={20} />} label="System Settings" activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
-        <header className="mb-8 flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">{activeTab}</h1>
-            <p className="text-slate-500 mt-1">Good evening, Administrator.</p>
-          </div>
-          <div className="text-right">
-            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold border border-blue-200 shadow-sm">
-              System Status: ONLINE
-            </span>
-          </div>
-        </header>
-
-        {/* ----------------------------------------------------------------- */}
-        {/* VIEW 1: DASHBOARD */}
-        {/* ----------------------------------------------------------------- */}
-        {activeTab === 'Dashboard' && (
-          <div className="animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <StatCard title="Active Buses" value="128" subtitle="Out of 156 total" icon={<Activity className="text-blue-500" />} />
-              <StatCard title="Today's Bookings" value="1,440" subtitle="+12% from yesterday" icon={<TrendingUp className="text-green-500" />} />
-              <StatCard title="Avg Occupancy" value="84%" subtitle="Across all routes" icon={<Users className="text-indigo-500" />} />
-              <StatCard title="Delayed Trips" value="3" subtitle="Requires attention" icon={<AlertTriangle className="text-orange-500" />} />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                <h2 className="text-lg font-bold mb-6">Weekly Revenue Trends</h2>
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                <div className="flex items-center gap-2 mb-6">
-                  <CalendarDays className="text-blue-600" />
-                  <h2 className="text-lg font-bold">Schedule Dispatcher</h2>
-                </div>
-                
-                <form onSubmit={handleCreateSchedule} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-1">Select Bus</label>
-                    <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option>BUS-104 (AC Express)</option>
-                      <option>BUS-209 (Local)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-1">Select Driver</label>
-                    <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option>D-014 (Rajesh Kumar)</option>
-                      <option>D-088 (Amit Singh)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-600 mb-1">Time Slot</label>
-                    <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option>Today, 10:00 AM - 1:00 PM</option>
-                      <option>Today, 2:00 PM - 5:00 PM</option>
-                    </select>
-                  </div>
-                  <button 
-                    type="submit" 
-                    disabled={conflictResult === 'CHECKING'}
-                    className="w-full mt-2 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all disabled:opacity-70"
-                  >
-                    {conflictResult === 'CHECKING' ? 'Validating Availability...' : 'Publish Schedule'}
-                  </button>
-                </form>
-
-                {conflictResult === 'CONFLICT' && (
-                  <div className="mt-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg animate-in slide-in-from-bottom-4">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="text-red-500 shrink-0" size={20} />
-                      <div>
-                        <h3 className="font-bold text-red-800 text-sm">Schedule Conflict Detected</h3>
-                        <p className="text-red-600 text-xs mt-1">
-                          Transaction aborted. <strong>BUS-104</strong> is already assigned to Route R-08 during this exact time slot.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ----------------------------------------------------------------- */}
-        {/* VIEW 2: FLEET MANAGEMENT */}
-        {/* ----------------------------------------------------------------- */}
-        {activeTab === 'Fleet Management' && (
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-500">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-900">Bus Inventory</h2>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-sm shadow-sm transition-all">
-                <Plus size={16} /> Add New Bus
-              </button>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-white border-b border-slate-200 text-sm text-slate-500 uppercase tracking-wider">
-                    <th className="p-4 font-semibold">Bus Number</th>
-                    <th className="p-4 font-semibold">Type</th>
-                    <th className="p-4 font-semibold">Capacity</th>
-                    <th className="p-4 font-semibold">Status</th>
-                    <th className="p-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <TableRow busId="BUS-104" type="AC Express" capacity={42} status="Active" />
-                  <TableRow busId="BUS-209" type="Local" capacity={50} status="Active" />
-                  <TableRow busId="BUS-315" type="Private Sleeper" capacity={30} status="Maintenance" />
-                  <TableRow busId="BUS-402" type="Electric AC" capacity={40} status="Active" />
-                  <TableRow busId="BUS-505" type="Non-AC Express" capacity={55} status="Inactive" />
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ----------------------------------------------------------------- */}
-        {/* VIEW 3: PLACEHOLDER FOR OTHER TABS */}
-        {/* ----------------------------------------------------------------- */}
-        {activeTab !== 'Dashboard' && activeTab !== 'Fleet Management' && (
-          <div className="h-[60vh] flex flex-col items-center justify-center text-slate-400 animate-in zoom-in-95 duration-500">
-            <Construction size={64} className="mb-4 text-blue-200" />
-            <h2 className="text-2xl font-bold text-slate-700 mb-2">{activeTab} Module</h2>
-            <p>This module is currently under development for Phase 2.</p>
-          </div>
-        )}
-
-      </main>
-    </div>
-  );
+  return <div className="flex min-h-screen bg-[#080d1c] font-sans text-slate-100">
+    <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-[#0b1225] md:flex md:flex-col"><div className="flex items-center gap-3 border-b border-white/10 px-6 py-6"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-slate-950"><Bus size={23} /></span><div><p className="text-lg font-extrabold">Omni<span className="text-blue-400">Admin</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Operations centre</p></div></div><nav className="flex-1 space-y-1 p-4">{tabs.map((tab) => <NavItem key={tab.label} {...tab} active={activeTab === tab.label} onClick={() => setActiveTab(tab.label)} />)}</nav><div className="m-4 rounded-2xl border border-white/10 bg-[#10182d] p-4"><div className="flex items-center gap-2 text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Systems online</div><p className="mt-2 text-xs text-slate-500">All services operational</p></div></aside>
+    <main className="min-w-0 flex-1 overflow-y-auto"><header className="sticky top-0 z-20 border-b border-white/10 bg-[#080d1c]/90 px-5 py-4 backdrop-blur sm:px-8"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-400">OmniAdmin / {activeTab}</p><h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{activeTab}</h1></div><div className="flex items-center gap-3"><span className="hidden text-right sm:block"><strong className="block text-sm">Super Admin</strong><small className="text-xs text-slate-500">admin@omnibus.in</small></span><span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/15 text-blue-300"><UserRound size={19} /></span></div></div><div className="mt-4 flex gap-2 overflow-x-auto md:hidden">{tabs.map((tab) => <button key={tab.label} type="button" onClick={() => setActiveTab(tab.label)} className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-bold ${activeTab === tab.label ? 'bg-blue-500 text-slate-950' : 'bg-[#10182d] text-slate-400'}`}>{tab.icon}{tab.label}</button>)}</div></header><div className="p-5 sm:p-8">{activeTab === 'Dashboard' && <Dashboard onPublish={() => { setScheduleCheck('PUBLISHED'); notify('Schedule published successfully'); }} scheduleCheck={scheduleCheck} />} {activeTab === 'Fleet Management' && <Fleet vehicles={filteredVehicles} search={vehicleSearch} setSearch={setVehicleSearch} filter={vehicleFilter} setFilter={setVehicleFilter} onAdd={() => setIsBusModalOpen(true)} onDelete={(id) => { setVehicles((current) => current.filter((vehicle) => vehicle.id !== id)); notify('Vehicle removed from fleet'); }} />} {activeTab === 'Routes & Stops' && <Routes stops={routeStops} newStop={newStop} setNewStop={setNewStop} addStop={addStop} onSave={() => notify('Route and pricing rules saved')} />} {activeTab === 'Drivers' && <Drivers />} {activeTab === 'Schedules' && <Schedules onCheck={publishSchedule} result={scheduleCheck} />} {activeTab === 'Reports' && <Reports range={reportRange} setRange={setReportRange} onExport={(type) => notify(`${type} export prepared`)} />} {activeTab === 'System Settings' && <SettingsView commission={commission} setCommission={setCommission} tax={tax} setTax={setTax} onSave={() => notify('Platform settings saved')} />}</div></main>{toast && <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl"><Check size={17} />{toast}</div>}{isBusModalOpen && <BusModal onClose={() => setIsBusModalOpen(false)} onSave={(vehicle) => { setVehicles((current) => [...current, vehicle]); setIsBusModalOpen(false); notify('New bus added to fleet'); }} />}</div>;
 }
 
-// Reusable NavItem that now updates state!
-function NavItem({ icon, label, activeTab, setActiveTab }: { icon: React.ReactNode, label: string, activeTab: string, setActiveTab: (label: string) => void }) {
-  const isActive = activeTab === label;
-  return (
-    <button 
-      onClick={() => setActiveTab(label)}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}
-    >
-      {icon}
-      <span className="font-medium">{label}</span>
-    </button>
-  );
-}
+function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: Tab; active: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition ${active ? 'bg-blue-500 text-slate-950 shadow-lg shadow-blue-950/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{icon}{label}</button>; }
 
-// Reusable StatCard
-function StatCard({ title, value, subtitle, icon }: { title: string, value: string, subtitle: string, icon: React.ReactNode }) {
-  return (
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center">
-          {icon}
-        </div>
-      </div>
-      <div>
-        <h3 className="text-slate-500 text-sm font-semibold">{title}</h3>
-        <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-        <p className="text-xs text-slate-400 mt-2 font-medium">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
+function Dashboard({ onPublish, scheduleCheck }: { onPublish: () => void; scheduleCheck: string }) { return <div className="space-y-6"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat title="Active buses" value="128" detail="Out of 156 total" icon={<Activity />} tone="blue" /><Stat title="Today's bookings" value="1,440" detail="+12% from yesterday" icon={<TrendingUp />} tone="green" /><Stat title="Avg occupancy" value="84%" detail="Across all routes" icon={<Users />} tone="violet" /><Stat title="Delayed trips" value="3" detail="Requires attention" icon={<AlertTriangle />} tone="amber" /></div><div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]"><Panel title="Weekly revenue trends" icon={<TrendingUp className="text-blue-400" />}><div className="h-72"><ResponsiveContainer width="100%" height="100%"><AreaChart data={revenueData}><defs><linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity={0.35} /><stop offset="100%" stopColor="#60a5fa" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="#24324d" /><XAxis dataKey="name" stroke="#64748b" axisLine={false} tickLine={false} /><YAxis stroke="#64748b" axisLine={false} tickLine={false} tickFormatter={(value) => `₹${value / 1000}k`} /><Tooltip contentStyle={{ background: '#10182d', border: '1px solid #334155', borderRadius: 12 }} /><Area type="monotone" dataKey="revenue" stroke="#60a5fa" strokeWidth={3} fill="url(#revenue-fill)" /></AreaChart></ResponsiveContainer></div></Panel><Panel title="Schedule dispatcher" icon={<CalendarDays className="text-blue-400" />}><form onSubmit={(event) => { event.preventDefault(); onPublish(); }} className="space-y-4"><Select label="Select bus" options={['BUS-104 · Volvo AC', 'BUS-209 · Local', 'BUS-402 · Electric AC']} /><Select label="Select driver" options={['D-014 · Rajesh Kumar', 'D-088 · Amit Singh']} /><Select label="Time slot" options={['Today · 10:00 AM - 1:00 PM', 'Today · 2:00 PM - 5:00 PM']} /><button className="btn-pill btn-primary w-full py-3">Publish schedule <ArrowRight size={17} /></button></form>{scheduleCheck === 'PUBLISHED' && <p className="mt-4 rounded-xl bg-emerald-500/10 p-3 text-sm font-bold text-emerald-300">Schedule published and drivers notified.</p>}</Panel></div></div>; }
 
-// Reusable Table Row for Fleet Management
-function TableRow({ busId, type, capacity, status }: { busId: string, type: string, capacity: number, status: string }) {
-  let statusBadge = "";
-  if (status === 'Active') statusBadge = "bg-green-100 text-green-700 border-green-200";
-  else if (status === 'Maintenance') statusBadge = "bg-orange-100 text-orange-700 border-orange-200";
-  else statusBadge = "bg-slate-100 text-slate-700 border-slate-200";
+function Fleet({ vehicles, search, setSearch, filter, setFilter, onAdd, onDelete }: { vehicles: Vehicle[]; search: string; setSearch: (value: string) => void; filter: string; setFilter: (value: string) => void; onAdd: () => void; onDelete: (id: string) => void }) { return <Panel title="Fleet inventory" icon={<Bus className="text-blue-400" />} action={<button onClick={onAdd} className="btn-pill btn-primary px-4 py-2 text-sm"><Plus size={16} /> Add new bus</button>}><div className="mb-5 flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-500" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search bus ID, plate or type" className="h-11 w-full rounded-xl border border-white/10 bg-[#0b1225] pl-10 pr-4 text-sm text-white outline-none focus:border-blue-400" /></label><select value={filter} onChange={(event) => setFilter(event.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#0b1225] px-4 text-sm text-slate-300 outline-none"><option>All</option><option>Active</option><option>En Route</option><option>Maintenance</option></select></div><Table><thead><tr><Th>Bus ID</Th><Th>License plate</Th><Th>Bus type</Th><Th>Seats</Th><Th>Status</Th><Th>Actions</Th></tr></thead><tbody>{vehicles.map((vehicle) => <tr key={vehicle.id} className="border-t border-white/10"><Td strong>{vehicle.id}</Td><Td mono>{vehicle.plate}</Td><Td>{vehicle.type}</Td><Td>{vehicle.seats}</Td><Td><Status label={vehicle.status} /></Td><Td><div className="flex gap-2"><button className="rounded-lg p-2 text-slate-500 hover:bg-white/10 hover:text-blue-300"><Edit3 size={16} /></button><button onClick={() => onDelete(vehicle.id)} className="rounded-lg p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-300"><Trash2 size={16} /></button></div></Td></tr>)}</tbody></Table></Panel>; }
 
-  return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className="p-4 font-bold text-slate-900">{busId}</td>
-      <td className="p-4 text-slate-600">{type}</td>
-      <td className="p-4 text-slate-600">{capacity} Seats</td>
-      <td className="p-4">
-        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${statusBadge}`}>
-          {status}
-        </span>
-      </td>
-      <td className="p-4 flex gap-3">
-        <button className="text-blue-500 hover:text-blue-700 transition-colors"><Edit size={18} /></button>
-        <button className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
-      </td>
-    </tr>
-  );
-}
+function Routes({ stops, newStop, setNewStop, addStop, onSave }: { stops: string[]; newStop: string; setNewStop: (value: string) => void; addStop: () => void; onSave: () => void }) { return <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]"><Panel title="Route builder" icon={<Route className="text-blue-400" />}><div className="grid gap-4 sm:grid-cols-2"><Input label="Origin" value="Patiala Bus Stand" /><Input label="Destination" value="ISBT Sec 43 Chandigarh" /></div><div className="mt-6"><p className="mb-3 text-sm font-bold text-slate-300">Waypoint manager</p><div className="space-y-3">{stops.map((stop, index) => <div key={stop} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b1225] p-3"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/15 text-xs font-bold text-blue-300">{index + 1}</span><span className="flex-1 text-sm font-bold">{stop}</span><span className="text-xs text-slate-500">{index === 0 ? '35 min · 28 km' : '20 min · 12 km'}</span><button onClick={() => setNewStop(stop)} className="text-slate-500 hover:text-white"><X size={15} /></button></div>)}</div><div className="mt-3 flex gap-2"><input value={newStop} onChange={(event) => setNewStop(event.target.value)} placeholder="Add intermediate stop" className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b1225] px-4 text-sm text-white outline-none focus:border-blue-400" /><button type="button" onClick={addStop} className="btn-pill btn-secondary px-4"><Plus size={17} /> Add</button></div></div></Panel><Panel title="Pricing engine" icon={<CircleDollarSign className="text-emerald-400" />}><Input label="Base fare (₹)" value="650" /><Input label="Dynamic pricing modifier" value="Peak hours +10%" /><Input label="Distance (km)" value="48" /><button onClick={onSave} className="btn-pill btn-primary mt-5 w-full py-3">Save route rules <Check size={17} /></button></Panel></div>; }
+
+function Drivers() { return <Panel title="Driver roster" icon={<Users className="text-blue-400" />}><Table><thead><tr><Th>Driver</Th><Th>Contact</Th><Th>License expiry</Th><Th>Assigned route</Th><Th>Duty</Th><Th>Rating</Th></tr></thead><tbody>{drivers.map((driver) => <tr key={driver.id} className="border-t border-white/10"><Td strong>{driver.name}<span className="mt-1 block text-xs font-normal text-slate-500">{driver.id}</span></Td><Td>{driver.phone}</Td><Td>{driver.expiry}</Td><Td>{driver.route}</Td><Td><Status label={driver.duty} /></Td><Td><span className="font-bold text-amber-300">★ {driver.rating}</span></Td></tr>)}</tbody></Table></Panel>; }
+
+function Schedules({ onCheck, result }: { onCheck: (event: React.FormEvent) => void; result: string }) { return <div className="space-y-6"><Panel title="Today's dispatch timeline" icon={<CalendarDays className="text-blue-400" />}><div className="space-y-3">{[['06:00 AM', 'BUS-101', 'Patiala → Chandigarh', 'Rajesh Kumar', 'On time'], ['08:30 AM', 'BUS-209', 'Patiala → Chandigarh', 'Amit Singh', 'On time'], ['12:00 PM', 'BUS-315', 'Delhi → Manali', 'Gurpreet Kaur', 'Conflict']].map(([time, bus, route, driver, status]) => <div key={time} className={`grid gap-3 rounded-xl border p-4 sm:grid-cols-[90px_110px_1fr_160px_100px] sm:items-center ${status === 'Conflict' ? 'border-red-400/40 bg-red-500/10' : 'border-white/10 bg-[#0b1225]'}`}><span className="font-mono text-sm font-bold text-blue-300">{time}</span><span className="font-bold">{bus}</span><span className="text-sm text-slate-300">{route}</span><span className="text-sm text-slate-400">{driver}</span><span className={status === 'Conflict' ? 'font-bold text-red-300' : 'font-bold text-emerald-300'}>{status}</span></div>)}</div></Panel><Panel title="Conflict resolution" icon={<AlertTriangle className="text-amber-400" />}><form onSubmit={onCheck} className="flex flex-col gap-4 sm:flex-row sm:items-end"><Select label="Driver" options={['Gurpreet Kaur · D-031', 'Rajesh Kumar · D-014']} /><Select label="Overlapping trip" options={['12:00 PM · Delhi → Manali', '12:30 PM · Chandigarh → Shimla']} /><button className="btn-pill btn-primary min-h-11 px-5">Validate assignment</button></form>{result === 'CONFLICT' && <p className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm font-bold text-red-300">Conflict detected: Gurpreet Kaur is assigned to two overlapping trips. Reassign one trip before publishing.</p>}</Panel></div>; }
+
+function Reports({ range, setRange, onExport }: { range: string; setRange: (value: string) => void; onExport: (type: string) => void }) { return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-sm text-slate-400">Financial and operations summary</p><h2 className="mt-1 text-xl font-extrabold">Performance reports</h2></div><div className="flex gap-2"><select value={range} onChange={(event) => setRange(event.target.value)} className="rounded-xl border border-white/10 bg-[#10182d] px-4 py-2.5 text-sm text-slate-300"><option>Last 7 days</option><option>This month</option><option>Custom date</option></select><button onClick={() => onExport('CSV')} className="btn-pill btn-secondary px-4 py-2 text-sm"><Download size={16} /> CSV</button><button onClick={() => onExport('PDF')} className="btn-pill btn-secondary px-4 py-2 text-sm"><FileText size={16} /> PDF</button></div></div><div className="grid gap-4 sm:grid-cols-3"><Stat title="Gross ticket sales" value="₹12.8L" detail={range} icon={<CircleDollarSign />} tone="green" /><Stat title="Platform fees" value="₹1.02L" detail="8% commission" icon={<TrendingUp />} tone="blue" /><Stat title="Tax liabilities" value="₹64,000" detail="5% GST" icon={<FileText />} tone="amber" /></div><Panel title="Financial breakdown" icon={<BarChart3 className="text-blue-400" />}><Table><thead><tr><Th>Day</Th><Th>Gross sales</Th><Th>Platform fees</Th><Th>Tax liability</Th><Th>Net settlement</Th></tr></thead><tbody>{revenueData.slice(0, 5).map((day) => <tr key={day.name} className="border-t border-white/10"><Td strong>{day.name}, 03 Sep</Td><Td>₹{day.revenue.toLocaleString('en-IN')}</Td><Td>₹{(day.revenue * 0.08).toLocaleString('en-IN')}</Td><Td>₹{(day.revenue * 0.05).toLocaleString('en-IN')}</Td><Td strong>₹{(day.revenue * 0.87).toLocaleString('en-IN')}</Td></tr>)}</tbody></Table></Panel></div>; }
+
+function SettingsView({ commission, setCommission, tax, setTax, onSave }: { commission: string; setCommission: (value: string) => void; tax: string; setTax: (value: string) => void; onSave: () => void }) { return <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]"><Panel title="Platform configuration" icon={<Settings className="text-blue-400" />}><div className="space-y-5"><Input label="Default platform commission (%)" value={commission} onChange={setCommission} /><Input label="GST / tax rate (%)" value={tax} onChange={setTax} /><label className="block text-sm font-bold text-slate-300">Terms & conditions<textarea defaultValue="Tickets are subject to operator availability and cancellation policies." className="mt-2 min-h-32 w-full rounded-xl border border-white/10 bg-[#0b1225] p-4 text-sm text-white outline-none focus:border-blue-400" /></label><button onClick={onSave} className="btn-pill btn-primary px-5 py-3">Save configuration <Check size={17} /></button></div></Panel><Panel title="Access control" icon={<ShieldCheck className="text-emerald-400" />}><div className="space-y-3">{[['Super Admin', 'Full platform access'], ['Dispatcher', 'Fleet and schedule management'], ['Support Staff', 'Bookings and passenger support']].map(([role, access]) => <div key={role} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b1225] p-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-300"><ShieldCheck size={17} /></span><span className="flex-1"><strong className="block text-sm">{role}</strong><small className="text-xs text-slate-500">{access}</small></span><button className="text-slate-500 hover:text-blue-300"><Edit3 size={16} /></button></div>)}</div><button className="btn-pill btn-secondary mt-5 px-4 py-2 text-sm"><Plus size={16} /> Add admin role</button></Panel></div>; }
+
+function BusModal({ onClose, onSave }: { onClose: () => void; onSave: (vehicle: Vehicle) => void }) { const [id, setId] = useState('BUS-'); const [plate, setPlate] = useState(''); const [type, setType] = useState('AC Seater'); return <Modal title="Add new bus" onClose={onClose}><div className="space-y-4"><Input label="Bus ID" value={id} onChange={setId} /><Input label="License plate" value={plate} onChange={setPlate} placeholder="PB-00-AA-0000" /><Select label="Bus type" options={['AC Seater', 'Volvo AC', 'Sleeper', 'Electric AC']} value={type} onChange={setType} /><button onClick={() => onSave({ id, plate: plate || 'PB-00-AA-0000', type, seats: 42, status: 'Active' })} className="btn-pill btn-primary w-full py-3">Add vehicle</button></div></Modal>; }
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-extrabold">{title}</h2><button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div>{children}</div></div>; }
+function Panel({ title, icon, action, children }: { title: string; icon?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-3xl border border-white/10 bg-[#10182d] p-5 shadow-2xl shadow-black/20 sm:p-6"><div className="mb-6 flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-lg font-extrabold">{icon}{title}</h2>{action}</div>{children}</section>; }
+function Stat({ title, value, detail, icon, tone }: { title: string; value: string; detail: string; icon: React.ReactNode; tone: string }) { return <div className="rounded-2xl border border-white/10 bg-[#10182d] p-5"><div className="flex items-center justify-between"><p className="text-sm font-bold text-slate-400">{title}</p><span className={`rounded-xl p-2 ${tone === 'green' ? 'bg-emerald-400/10 text-emerald-300' : tone === 'amber' ? 'bg-amber-400/10 text-amber-300' : tone === 'violet' ? 'bg-violet-400/10 text-violet-300' : 'bg-blue-400/10 text-blue-300'}`}>{icon}</span></div><p className="mt-5 text-3xl font-extrabold">{value}</p><p className="mt-1 text-xs font-semibold text-slate-500">{detail}</p></div>; }
+function Status({ label }: { label: string }) { return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${label === 'Maintenance' || label === 'Conflict' ? 'bg-red-400/10 text-red-300' : label === 'En Route' || label === 'On Shift' ? 'bg-blue-400/10 text-blue-300' : label === 'Off Duty' ? 'bg-slate-700 text-slate-300' : 'bg-emerald-400/10 text-emerald-300'}`}>{label}</span>; }
+function Select({ label, options, value, onChange }: { label: string; options: string[]; value?: string; onChange?: (value: string) => void }) { return <label className="block flex-1 text-sm font-bold text-slate-300">{label}<span className="relative mt-2 block"><select value={value} onChange={(event) => onChange?.(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-[#0b1225] px-4 pr-9 text-sm text-white outline-none focus:border-blue-400">{options.map((option) => <option key={option}>{option}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-3 top-3.5 text-slate-500" /></span></label>; }
+function Input({ label, value, onChange, placeholder }: { label: string; value: string; onChange?: (value: string) => void; placeholder?: string }) { return <label className="block text-sm font-bold text-slate-300">{label}<input value={value} onChange={(event) => onChange?.(event.target.value)} placeholder={placeholder} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-[#0b1225] px-4 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-400" /></label>; }
+function Table({ children }: { children: React.ReactNode }) { return <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm">{children}</table></div>; }
+function Th({ children }: { children: React.ReactNode }) { return <th className="whitespace-nowrap px-4 pb-3 text-xs font-bold uppercase tracking-wider text-slate-500 first:pl-0">{children}</th>; }
+function Td({ children, strong, mono }: { children: React.ReactNode; strong?: boolean; mono?: boolean }) { return <td className={`whitespace-nowrap px-4 py-4 text-slate-400 first:pl-0 ${strong ? 'font-bold text-white' : ''} ${mono ? 'font-mono text-xs' : ''}`}>{children}</td>; }
