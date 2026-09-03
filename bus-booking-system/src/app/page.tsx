@@ -1,8 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, Search, BusFront, ShieldCheck, Clock, CreditCard, UserCircle, LogOut, History } from "lucide-react";
+import { MapPin, Calendar, Users, Search, BusFront, ShieldCheck, Clock, CreditCard, UserCircle, LogOut, History, ArrowLeftRight } from "lucide-react";
 import { useRouter } from 'next/navigation';
+
+const PLACES = ['Amritsar', 'Chandigarh', 'Delhi', 'Jalandhar', 'Ludhiana', 'Manali', 'Patiala', 'Rajpura', 'Shimla'];
+
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function Home() {
   const router = useRouter();
@@ -11,9 +20,17 @@ export default function Home() {
   // State for our search inputs
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [activePlaceField, setActivePlaceField] = useState<'from' | 'to' | null>(null);
+  const [travelDate, setTravelDate] = useState(formatDateInput(new Date()));
   
   // State for our recent searches
   const [recentSearches, setRecentSearches] = useState<{from: string, to: string}[]>([]);
+
+  const today = new Date();
+  const maxBookingDate = new Date(today);
+  maxBookingDate.setMonth(maxBookingDate.getMonth() + 3);
+  const minDate = formatDateInput(today);
+  const maxDate = formatDateInput(maxBookingDate);
 
   useEffect(() => {
     // 1. Check Login Status
@@ -58,32 +75,37 @@ export default function Home() {
     router.push('/search');
   };
 
-  const handleRecentClick = (search: {from: string, to: string}) => {
-    setFrom(search.from);
-    setTo(search.to);
+  const selectPlace = (field: 'from' | 'to', place: string) => {
+    if (field === 'from') setFrom(place);
+    else setTo(place);
+    setActivePlaceField(null);
+  };
+
+  const swapPlaces = () => {
+    setFrom(to);
+    setTo(from);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* NAVIGATION BAR */}
-      <nav className="flex items-center justify-between px-8 py-4 bg-white shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2 text-blue-700 cursor-pointer" onClick={() => router.push('/')}>
-          <BusFront size={28} className="text-blue-600" />
+    <div className="min-h-screen bg-[#f5f5f5] font-sans text-slate-900">
+      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 shadow-sm md:px-8">
+        <div className="flex cursor-pointer items-center gap-2 text-[#d9232e]" onClick={() => router.push('/')}>
+          <BusFront size={28} className="text-[#d9232e]" />
           <span className="text-xl font-bold tracking-tight">OmniBus</span>
         </div>
-        <div className="hidden md:flex items-center gap-6 font-medium text-slate-600">
-          <a href="/track" className="hover:text-blue-600 transition">Track Ticket</a>
-          <a href="#" className="hover:text-blue-600 transition">Destinations</a>
-          <a href="#" className="hover:text-blue-600 transition">Support</a>
+        <div className="hidden items-center gap-6 font-medium text-slate-600 md:flex">
+          <a href="/track" className="transition hover:text-[#d9232e]">Track Ticket</a>
+          <a href="#" className="transition hover:text-[#d9232e]">Destinations</a>
+          <a href="#" className="transition hover:text-[#d9232e]">Support</a>
         </div>
         
         <div className="flex items-center gap-3">
           {isLoggedIn ? (
             <div className="flex items-center gap-4">
-              <span className="hidden md:flex items-center gap-2 font-bold text-slate-700">
-                <UserCircle size={20} className="text-blue-600" /> Hi, Girikshit!
+              <span className="hidden items-center gap-2 font-bold text-slate-700 md:flex">
+                <UserCircle size={20} className="text-[#d9232e]" /> Hi, Girikshit!
               </span>
-              <a href="#" className="font-semibold text-blue-600 hover:underline hidden md:block">My Bookings</a>
+              <a href="#" className="hidden font-semibold text-[#d9232e] hover:underline md:block">My Bookings</a>
               <button 
                 onClick={handleLogout}
                 className="px-4 py-2 font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2"
@@ -93,22 +115,19 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <a href="/login" className="px-4 py-2 font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition">Log In</a>
-              <a href="/login" className="px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition">Register</a>
+              <a href="/login" className="bg-red-50 px-4 py-2 font-semibold text-[#d9232e] transition hover:bg-red-100">Log In</a>
+              <a href="/login" className="bg-[#d9232e] px-4 py-2 font-semibold text-white shadow-md transition hover:bg-[#b91c27]">Register</a>
             </>
           )}
         </div>
       </nav>
 
-      {/* HERO SECTION */}
-      <main className="relative flex flex-col items-center justify-center px-4 pt-20 pb-32 text-center overflow-hidden bg-gradient-to-b from-slate-900 to-blue-900">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
-           <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
-           <div className="absolute top-24 -right-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
-        </div>
+      <main className="relative flex flex-col items-center justify-center overflow-hidden bg-[#7f1721] px-4 pb-32 pt-20 text-center">
+           <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-red-500 opacity-30 blur-3xl"></div>
+           <div className="absolute -right-24 top-24 h-96 w-96 rounded-full bg-orange-500 opacity-20 blur-3xl"></div>
 
         <h1 className="relative z-10 max-w-4xl text-5xl font-extrabold tracking-tight text-white sm:text-6xl md:text-7xl">
-          Your journey, <span className="text-blue-400">intelligently managed.</span>
+          Your journey, <span className="text-red-200">simply booked.</span>
         </h1>
         <p className="relative z-10 max-w-2xl mt-6 text-lg leading-8 text-slate-300">
           Search, book, track, and manage every bus journey from one intelligent platform.
@@ -118,7 +137,7 @@ export default function Home() {
         <div className="relative z-20 w-full max-w-5xl mt-12 bg-white rounded-2xl shadow-2xl p-4 md:p-6 border border-slate-100">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4 items-end">
             
-            <div className="flex flex-col gap-1">
+            <div className="relative flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">From</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 text-slate-400" size={20} />
@@ -126,13 +145,22 @@ export default function Home() {
                   type="text" 
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  placeholder="Leaving from..." 
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-900 font-medium" 
+                  onFocus={() => setActivePlaceField('from')}
+                  onBlur={() => setTimeout(() => setActivePlaceField(null), 150)}
+                  placeholder="Select boarding point"
+                  className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
                 />
               </div>
+              {activePlaceField === 'from' && (
+                <PlaceMenu field="from" value={from} places={PLACES} recentSearches={recentSearches} onSelect={selectPlace} />
+              )}
             </div>
 
-            <div className="flex flex-col gap-1">
+            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="flex items-center justify-center gap-2 py-1 text-xs font-bold text-[#d9232e] md:hidden">
+              <ArrowLeftRight size={16} /> Swap places
+            </button>
+
+            <div className="relative flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">To</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 text-slate-400" size={20} />
@@ -140,43 +168,34 @@ export default function Home() {
                   type="text" 
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  placeholder="Going to..." 
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-900 font-medium" 
+                  onFocus={() => setActivePlaceField('to')}
+                  onBlur={() => setTimeout(() => setActivePlaceField(null), 150)}
+                  placeholder="Select destination"
+                  className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
                 />
               </div>
+              {activePlaceField === 'to' && (
+                <PlaceMenu field="to" value={to} places={PLACES} recentSearches={recentSearches} onSelect={selectPlace} />
+              )}
             </div>
+
+            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-[119px] z-30 hidden -translate-x-1/2 rounded-full border border-slate-200 bg-white p-2 text-[#d9232e] shadow-sm transition hover:bg-red-50 md:block">
+              <ArrowLeftRight size={17} />
+            </button>
 
             <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="date" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-700 font-medium" />
+                <input type="date" value={travelDate} min={minDate} max={maxDate} onChange={(e) => setTravelDate(e.target.value)} className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]" />
               </div>
             </div>
-
-            <button onClick={handleSearch} className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95">
+            <button onClick={handleSearch} className="flex w-full items-center justify-center gap-2 bg-[#d9232e] py-3 font-bold text-white shadow-lg shadow-red-200 transition-all hover:bg-[#b91c27] active:scale-95">
               <Search size={20} />
               Search Buses
             </button>
           </div>
 
-          {/* RECENT SEARCHES SECTION */}
-          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
-            <span className="text-sm font-semibold text-slate-400 flex items-center gap-1">
-              <History size={16} /> Recent / Popular:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {recentSearches.map((search, idx) => (
-                <button 
-                  key={idx}
-                  onClick={() => handleRecentClick(search)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-sm font-medium rounded-lg transition-colors border border-slate-200 hover:border-blue-200"
-                >
-                  {search.from} <span className="text-slate-400 mx-1">→</span> {search.to}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
 
@@ -206,6 +225,47 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
       </div>
       <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
       <p className="text-slate-500 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function PlaceMenu({
+  field,
+  value,
+  places,
+  recentSearches,
+  onSelect,
+}: {
+  field: 'from' | 'to';
+  value: string;
+  places: string[];
+  recentSearches: {from: string, to: string}[];
+  onSelect: (field: 'from' | 'to', place: string) => void;
+}) {
+  const matchingPlaces = places.filter(place => place.toLowerCase().includes(value.toLowerCase()));
+
+  return (
+    <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 overflow-y-auto border border-slate-200 bg-white text-left shadow-xl">
+      {recentSearches.length > 0 && !value && (
+        <div className="border-b border-slate-100 p-3">
+          <p className="mb-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400"><History size={13} /> Recent searches</p>
+          <div className="space-y-1">
+            {recentSearches.map((search, index) => (
+              <button key={`${search.from}-${search.to}-${index}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(field, field === 'from' ? search.from : search.to)} className="block w-full px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-[#d9232e]">
+                {field === 'from' ? search.from : search.to} <span className="text-slate-400">from recent route</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="p-2">
+        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">All places</p>
+        {matchingPlaces.length > 0 ? matchingPlaces.map(place => (
+          <button key={place} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(field, place)} className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-red-50 hover:text-[#d9232e]">
+            <MapPin size={15} className="text-slate-400" /> {place}
+          </button>
+        )) : <p className="px-2 py-2 text-sm text-slate-400">No places found</p>}
+      </div>
     </div>
   );
 }

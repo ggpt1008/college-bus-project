@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { BusFront, Clock, MapPin, ArrowRight, Wifi, Wind, Zap, Shield, Filter } from 'lucide-react';
+import { BusFront, ArrowRight, Filter, CalendarDays } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // Extended database representing all required bus types
@@ -23,31 +23,46 @@ export default function SearchResultsPage() {
     : ALL_BUSES.filter(b => b.type.toUpperCase().includes(filterType));
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-[#f5f5f5] font-sans text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-8">
+          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#d9232e]">
+            <BusFront size={29} strokeWidth={2.5} />
+            <span className="text-xl font-extrabold tracking-tight">OmniBus</span>
+          </button>
+          <div className="flex items-center gap-5 text-sm font-semibold text-slate-600">
+            <a href="/track" className="hidden hover:text-[#d9232e] sm:block">Track Ticket</a>
+            <a href="/login" className="hover:text-[#d9232e]">Login</a>
+          </div>
+        </div>
+      </header>
       
       {/* Header Info */}
-      <div className="max-w-5xl mx-auto mb-6 bg-slate-900 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="mx-auto border-b border-slate-200 bg-white px-4 py-5 md:px-8">
+        <div className="mx-auto flex max-w-5xl flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <MapPin className="text-blue-400"/> Patiala <ArrowRight size={20} className="text-slate-500" /> Chandigarh
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-[#d9232e]">Bus tickets</p>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            Patiala <ArrowRight size={20} className="text-slate-400" /> Chandigarh
           </h1>
-          <p className="text-slate-400 mt-1 flex items-center gap-2">
-            <Clock size={16} /> Available Fleet • Showing all configurations
+          <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            <CalendarDays size={16} /> Wed, 03 Sep 2026 <span className="text-slate-300">|</span> {filteredBuses.length} buses found
           </p>
         </div>
-        <button onClick={() => router.push('/')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition">
+        <button onClick={() => router.push('/')} className="border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#d9232e] hover:text-[#d9232e]">
           Modify Search
         </button>
+        </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="max-w-5xl mx-auto mb-6 flex flex-wrap gap-2 items-center">
-        <span className="text-sm font-bold text-slate-500 flex items-center gap-1 mr-2"><Filter size={16}/> Filter Type:</span>
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-5 md:px-0">
+        <span className="mr-2 flex items-center gap-1 text-sm font-bold text-slate-500"><Filter size={16}/> Filters</span>
         {['ALL', 'AC', 'NON-AC', 'EXPRESS', 'ELECTRIC', 'LOCAL', 'PRIVATE'].map((type) => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+            className={`border px-4 py-2 text-xs font-bold transition-all ${filterType === type ? 'border-[#d9232e] bg-[#d9232e] text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-[#d9232e] hover:text-[#d9232e]'}`}
           >
             {type}
           </button>
@@ -55,12 +70,12 @@ export default function SearchResultsPage() {
       </div>
 
       {/* Bus List */}
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div className="mx-auto max-w-5xl space-y-3 px-4 pb-10 md:px-0">
         {filteredBuses.map((bus) => (
-          <div key={bus.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 transition-colors flex flex-col lg:flex-row justify-between items-center gap-6">
+          <div key={bus.id} className="flex flex-col items-center justify-between gap-5 border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-[#d9232e] lg:flex-row">
             
             <div className="w-full lg:w-1/4">
-              <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">{bus.id}</span>
+              <span className="bg-red-50 px-2 py-1 font-mono text-xs font-bold text-[#d9232e]">{bus.id}</span>
               <h2 className="font-bold text-lg text-slate-900 mt-1">{bus.operator}</h2>
               <p className="text-slate-500 text-sm font-medium">{bus.type}</p>
             </div>
@@ -94,7 +109,7 @@ export default function SearchResultsPage() {
               </div>
               <button 
                 onClick={() => router.push('/book')}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+                className="bg-[#d9232e] px-6 py-3 font-bold text-white shadow-sm transition-all hover:bg-[#b91c27] active:scale-95"
               >
                 View Seats
               </button>

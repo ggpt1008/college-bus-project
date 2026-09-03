@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Armchair, Info, Lock, ArrowRight, MapPin } from 'lucide-react';
+import { Armchair, Info, Lock, ArrowRight, MapPin, BusFront, CalendarDays } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // 1. Define the exact shape of our data so TypeScript is happy
@@ -73,28 +73,35 @@ export default function BookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#f5f5f5] font-sans text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-8">
+          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#d9232e]">
+            <BusFront size={29} strokeWidth={2.5} />
+            <span className="text-xl font-extrabold tracking-tight">OmniBus</span>
+          </button>
+          <button onClick={() => router.push('/search')} className="text-sm font-semibold text-slate-600 hover:text-[#d9232e]">Back to buses</button>
+        </div>
+      </header>
       
-      <div className="max-w-6xl mx-auto mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center">
+      <div className="mx-auto mb-6 max-w-6xl border-b border-slate-200 bg-white px-4 py-5 md:px-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Select Seats (40-Seater Coach)</h1>
-          <div className="flex items-center gap-2 text-slate-500 mt-1">
-            <MapPin size={16} /> <span>Patiala <ArrowRight size={14} className="inline" /> Chandigarh</span>
-            <span className="mx-2">•</span>
-            <span>AC Express (Bus ID: BUS-101)</span>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-[#d9232e]">Choose your seats</p>
+          <h1 className="text-2xl font-bold text-slate-900">OmniBus Elite <span className="font-normal text-slate-400">• AC Express</span></h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <MapPin size={16} className="text-[#d9232e]" /> <span>Patiala <ArrowRight size={14} className="inline" /> Chandigarh</span>
+            <span className="mx-1 text-slate-300">|</span>
+            <CalendarDays size={15} /> <span>Wed, 03 Sep 2026</span>
           </div>
         </div>
-        <button onClick={() => router.push('/search')} className="mt-4 md:mt-0 text-sm font-bold text-blue-600 hover:underline">
-          ← Back to Bus List
-        </button>
       </div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-10 md:px-8 lg:grid-cols-3">
         
         {/* Seat Map */}
-        <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+        <div className="border border-slate-200 bg-white p-5 shadow-sm md:p-8 lg:col-span-2">
           
-          <div className="w-full flex justify-between items-center mb-8 border-b border-slate-100 pb-4 px-4">
+          <div className="mb-8 flex w-full items-center justify-between border-b border-slate-100 px-4 pb-4">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Rear Exit</span>
             <div className="flex items-center gap-2 text-slate-400">
               <div className="w-8 h-8 rounded-full border-2 border-slate-300 flex items-center justify-center">
@@ -141,9 +148,9 @@ export default function BookingPage() {
           </div>
 
           {/* Legend */}
-          <div className="mt-10 pt-6 border-t border-slate-100 flex flex-wrap gap-4 text-xs font-medium text-slate-600 justify-center">
+          <div className="mt-10 flex flex-wrap justify-center gap-4 border-t border-slate-100 pt-6 text-xs font-medium text-slate-600">
             <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-white border border-slate-300"></div> Available</div>
-            <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-blue-600"></div> Selected</div>
+            <div className="flex items-center gap-1.5"><div className="h-3.5 w-3.5 rounded bg-[#d9232e]"></div> Selected</div>
             <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-pink-100 border border-pink-300"></div> Women Priority</div>
             <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-orange-100 border border-orange-300"></div> Elderly Priority</div>
             <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-slate-200"></div> Booked</div>
@@ -151,8 +158,9 @@ export default function BookingPage() {
         </div>
 
         {/* Summary Card */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 h-fit sticky top-24">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Booking Summary</h2>
+        <div className="sticky top-6 h-fit border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400">Your trip</p>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">Booking Summary</h2>
           
           {selectedSeats.length === 0 ? (
             <div className="text-center py-8 text-slate-400">
@@ -161,9 +169,9 @@ export default function BookingPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <span className="text-slate-600 text-sm">Selected:</span>
-                <span className="font-bold text-blue-600 text-sm">{selectedSeats.join(', ')}</span>
+                <span className="text-sm font-bold text-[#d9232e]">{selectedSeats.join(', ')}</span>
               </div>
               
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
@@ -171,7 +179,7 @@ export default function BookingPage() {
                 <span className="font-bold text-slate-900 text-lg">₹{totalFare}</span>
               </div>
 
-              <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-xs flex items-start gap-2">
+              <div className="flex items-start gap-2 bg-red-50 p-3 text-xs text-red-800">
                 <Info size={16} className="mt-0.5 shrink-0" />
                 <p>Seats will be <strong>temporarily locked for 5 minutes</strong> upon proceeding.</p>
               </div>
@@ -179,7 +187,7 @@ export default function BookingPage() {
               <button 
                 onClick={handleProceedToPayment}
                 disabled={isLocking}
-                className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                className="mt-2 flex w-full items-center justify-center gap-2 bg-[#d9232e] py-3.5 font-bold text-white shadow-lg shadow-red-100 transition-all hover:bg-[#b91c27] disabled:opacity-70"
               >
                 {isLocking ? <><Lock size={18} className="animate-pulse" /> Locking...</> : <>Proceed to Payment <ArrowRight size={18} /></>}
               </button>
@@ -193,12 +201,12 @@ export default function BookingPage() {
 }
 
 function SeatButton({ seat, isSelected, onClick }: { seat: SeatType, isSelected: boolean, onClick: () => void }) {
-  let style = "bg-white border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 cursor-pointer";
+  let style = "bg-white border-slate-300 text-slate-400 hover:border-[#d9232e] hover:text-[#d9232e] cursor-pointer";
 
   if (seat.status === 'BOOKED') {
     style = "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed opacity-50";
   } else if (isSelected) {
-    style = "bg-blue-600 border-blue-600 text-white shadow-md transform scale-105";
+    style = "bg-[#d9232e] border-[#d9232e] text-white shadow-md transform scale-105";
   } else if (seat.type === 'WOMEN_PRIORITY') {
     style = "bg-pink-50 border-pink-300 text-pink-500 hover:bg-pink-100 cursor-pointer";
   } else if (seat.type === 'ELDERLY_PRIORITY') {

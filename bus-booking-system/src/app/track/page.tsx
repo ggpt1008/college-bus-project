@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from 'next/dynamic';
-import { BusFront, MapPin, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BusFront, MapPin, Clock, CheckCircle2, Search, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // We dynamically import the map to prevent server-side errors
 const LiveMap = dynamic(() => import('@/components/Map'), { 
@@ -15,6 +17,27 @@ const LiveMap = dynamic(() => import('@/components/Map'), {
 });
 
 export default function TrackingPage() {
+  const router = useRouter();
+  const [pnr, setPnr] = useState('');
+  const [searchedPnr, setSearchedPnr] = useState('');
+  const [bookingFound, setBookingFound] = useState(false);
+
+  useEffect(() => {
+    const hydrationTimer = window.setTimeout(() => {
+      const savedBooking = localStorage.getItem('latestBooking');
+      if (savedBooking) setPnr(JSON.parse(savedBooking).pnr);
+    }, 0);
+    return () => window.clearTimeout(hydrationTimer);
+  }, []);
+
+  const checkBooking = (event: React.FormEvent) => {
+    event.preventDefault();
+    const savedBooking = localStorage.getItem('latestBooking');
+    const savedPnr = savedBooking ? JSON.parse(savedBooking).pnr : '';
+    setSearchedPnr(pnr.trim().toUpperCase());
+    setBookingFound(pnr.trim().toUpperCase() === savedPnr || pnr.trim().toUpperCase() === 'PNR88291A');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
       
@@ -33,6 +56,15 @@ export default function TrackingPage() {
           </span>
           GPS Active
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto mb-6 bg-white border border-slate-200 p-5 shadow-sm">
+        <form onSubmit={checkBooking} className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1"><Search size={18} className="absolute left-3 top-3 text-slate-400" /><input value={pnr} onChange={(event) => setPnr(event.target.value)} placeholder="Enter your PNR to check booking status" className="w-full border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 font-mono uppercase outline-none focus:border-[#d9232e]" /></div>
+          <button className="bg-[#d9232e] px-6 py-3 font-bold text-white hover:bg-[#b91c27]">Check status</button>
+          <button type="button" onClick={() => router.push('/')} className="flex items-center justify-center gap-2 border border-slate-300 px-5 py-3 font-bold text-slate-600 hover:border-[#d9232e] hover:text-[#d9232e]"><ArrowLeft size={16} /> Home</button>
+        </form>
+        {searchedPnr && <p className={`mt-3 text-sm font-bold ${bookingFound ? 'text-green-600' : 'text-red-600'}`}>{bookingFound ? `Booking ${searchedPnr} is confirmed and ready to track.` : 'No booking found for that PNR. Check the number on your receipt.'}</p>}
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 h-[75vh]">

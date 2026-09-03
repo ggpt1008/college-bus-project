@@ -1,88 +1,37 @@
 "use client";
 
-import React from 'react';
-import { BusFront, QrCode, Download, CheckCircle2, MapPin, Calendar, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BusFront, QrCode, Download, CheckCircle2, MapPin, Calendar, Clock, Search, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+type Booking = { pnr: string; status: string; route: string; date: string; departure: string; arrival: string; bus: string; seats: string; passenger: string; amount: number; paidWith: string };
+
+const FALLBACK_BOOKING: Booking = { pnr: 'OMNI882910', status: 'CONFIRMED', route: 'Patiala -> Chandigarh', date: '03 Sep 2026', departure: '06:00 AM', arrival: '08:15 AM', bus: 'OmniBus Elite', seats: '1C, 1D, 2C, 2D', passenger: 'Girikshit', amount: 2100, paidWith: 'UPI' };
 
 export default function TicketPage() {
+  const router = useRouter();
+  const [booking, setBooking] = useState<Booking>(FALLBACK_BOOKING);
+
+  useEffect(() => {
+    const hydrationTimer = window.setTimeout(() => {
+      const savedBooking = localStorage.getItem('latestBooking');
+      if (savedBooking) setBooking(JSON.parse(savedBooking));
+    }, 0);
+    return () => window.clearTimeout(hydrationTimer);
+  }, []);
+
+  const [from, to] = booking.route.split(' -> ');
   return (
-    <div className="min-h-screen bg-slate-100 py-12 px-4 font-sans flex flex-col items-center">
-      
-      <div className="flex items-center gap-2 text-green-600 mb-8">
-        <CheckCircle2 size={28} />
-        <h1 className="text-2xl font-bold text-slate-900">Booking Confirmed!</h1>
+    <main className="min-h-screen bg-[#f5f5f5] px-4 py-8 font-sans text-slate-900">
+      <div className="mx-auto max-w-3xl">
+        <header className="mb-7 flex items-center justify-between"><button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#d9232e]"><BusFront size={29} strokeWidth={2.5} /><span className="text-xl font-extrabold">OmniBus</span></button><button onClick={() => router.push('/track')} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#d9232e]">Booking status <ArrowRight size={16} /></button></header>
+        <div className="mb-6 flex items-center gap-3"><CheckCircle2 size={28} className="text-green-600" /><div><p className="text-xs font-bold uppercase tracking-wider text-green-600">Payment received</p><h1 className="text-2xl font-bold">Booking confirmed</h1></div></div>
+        <section className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between bg-[#d9232e] p-6 text-white"><div className="flex items-center gap-2"><BusFront size={32} /><span className="text-2xl font-bold">OmniBus</span></div><div className="text-right"><p className="text-xs font-bold uppercase tracking-wider text-red-100">Bus PNR</p><p className="font-mono text-2xl font-bold tracking-widest">{booking.pnr}</p></div></div>
+          <div className="grid gap-8 p-6 md:grid-cols-[1fr_auto] md:p-8"><div className="space-y-6"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Passenger</p><p className="text-xl font-bold">{booking.passenger}</p></div><div className="flex items-center justify-between border border-slate-100 bg-slate-50 p-4"><div><p className="text-xs font-bold uppercase text-slate-400">From</p><p className="flex items-center gap-1 font-bold"><MapPin size={15} className="text-[#d9232e]" />{from}</p></div><ArrowRight className="text-slate-400" size={20} /><div className="text-right"><p className="text-xs font-bold uppercase text-slate-400">To</p><p className="font-bold">{to}</p></div></div><div className="grid grid-cols-2 gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Departure</p><p className="mt-1 flex items-center gap-1 font-bold"><Calendar size={15} />{booking.date}</p><p className="mt-1 flex items-center gap-1 font-bold"><Clock size={15} />{booking.departure}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Seats</p><p className="mt-1 text-lg font-bold text-[#d9232e]">{booking.seats}</p><p className="text-sm text-slate-500">{booking.bus}</p></div></div><div className="flex justify-between border-t border-slate-100 pt-4 text-sm"><span className="text-slate-500">Paid via {booking.paidWith}</span><span className="font-extrabold">Total paid ₹{booking.amount}</span></div></div><div className="flex flex-col items-center justify-center border-t-2 border-dashed border-slate-200 pt-6 md:border-l-2 md:border-t-0 md:pl-8 md:pt-0"><QrCode size={128} className="text-slate-800" /><p className="mt-2 text-xs font-semibold text-slate-400">Scan for boarding</p><span className="mt-3 border border-green-200 bg-green-50 px-4 py-1 text-sm font-bold text-green-700">PAID</span></div></div>
+        </section>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2"><button onClick={() => window.print()} className="flex items-center justify-center gap-2 border border-slate-300 bg-white py-3 font-bold text-slate-700 hover:border-[#d9232e] hover:text-[#d9232e]"><Download size={18} /> Print / save receipt</button><button onClick={() => router.push('/track')} className="flex items-center justify-center gap-2 bg-[#d9232e] py-3 font-bold text-white hover:bg-[#b91c27]"><Search size={18} /> Track this booking</button></div>
       </div>
-
-      {/* THE TICKET */}
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-        
-        {/* Ticket Header */}
-        <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <BusFront size={32} />
-            <span className="text-2xl font-bold tracking-tight">OmniBus</span>
-          </div>
-          <div className="text-right">
-            <p className="text-blue-200 text-sm font-semibold uppercase tracking-wider">Bus PNR</p>
-            <p className="text-2xl font-mono font-bold tracking-widest">PNR88291A</p>
-          </div>
-        </div>
-
-        {/* Ticket Body */}
-        <div className="p-8 flex flex-col md:flex-row justify-between gap-8">
-          <div className="flex-1 space-y-6">
-            
-            {/* Passenger Info */}
-            <div>
-              <p className="text-slate-400 text-sm font-semibold uppercase">Passenger</p>
-              <p className="text-xl font-bold text-slate-900">Girikshit (Primary) + 3</p>
-            </div>
-
-            {/* Route */}
-            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div>
-                <p className="text-slate-400 text-xs font-semibold uppercase mb-1">From</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1"><MapPin size={16} className="text-blue-500"/> Patiala</p>
-              </div>
-              <div className="h-[2px] w-12 bg-slate-300 relative">
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-slate-400 rounded-full"></div>
-              </div>
-              <div className="text-right">
-                <p className="text-slate-400 text-xs font-semibold uppercase mb-1">To</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1">Chandigarh <MapPin size={16} className="text-blue-500"/></p>
-              </div>
-            </div>
-
-            {/* Schedule & Seats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-slate-400 text-sm font-semibold uppercase">Departure</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1 mt-1"><Calendar size={16}/> Today</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1 mt-1"><Clock size={16}/> 5:30 PM</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm font-semibold uppercase">Seats (AC Express)</p>
-                <p className="font-bold text-blue-600 text-xl mt-1">1C, 1D, 2C, 2D</p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* QR Code Section */}
-          <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-slate-200 pl-8">
-            <QrCode size={120} className="text-slate-800 mb-2" />
-            <p className="text-xs text-slate-400 font-mono text-center mb-4">Scan for boarding</p>
-            <div className="bg-green-50 text-green-700 px-4 py-1 rounded-full text-sm font-bold border border-green-200">
-              PAID: ₹2100
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <button className="mt-8 flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all">
-        <Download size={20} />
-        Download Ticket PDF
-      </button>
-
-    </div>
+    </main>
   );
 }
