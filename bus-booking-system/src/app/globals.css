@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8fb;
-  --foreground: #172033;
+  --background: #080d1c;
+  --foreground: #f1f5f9;
   --brand: #d9232e;
   --brand-dark: #b91c27;
   --ink-muted: #64748b;
@@ -19,6 +19,72 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+}
+
+html[data-theme="light"] {
+  --background: #f7f8fb;
+  --foreground: #172033;
+}
+
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-\[\#f5f5f5\] {
+  background-color: #10182d !important;
+}
+
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .text-slate-700 {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-slate-300 {
+  border-color: rgb(148 163 184 / 18%) !important;
+}
+
+html[data-theme="dark"] .bg-red-50,
+html[data-theme="dark"] .bg-\[\#fff8f8\] {
+  background-color: rgb(127 29 29 / 22%) !important;
+}
+
+html[data-theme="light"] .bg-\[\#080d1c\] {
+  background-color: #f7f8fb !important;
+}
+
+html[data-theme="light"] .bg-\[\#10182d\],
+html[data-theme="light"] .bg-\[\#0b1225\] {
+  background-color: white !important;
+}
+
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-white {
+  color: #172033;
+}
+
+html[data-theme="light"] .btn-primary {
+  color: white !important;
+}
+
+html[data-theme="light"] .border-white\/10 {
+  border-color: #e2e8f0 !important;
+}
+
+.theme-toggle {
+  border-color: rgb(148 163 184 / 28%);
+  background: #10182d;
+  color: #fbbf24;
+}
+
+html[data-theme="light"] .theme-toggle {
+  background: white;
+  color: #334155;
 }
 
 button,

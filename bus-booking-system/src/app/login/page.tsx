@@ -18,7 +18,7 @@ const handleSubmit = (e: React.FormEvent) => {
 
     // Simulate Authentication Routing based on Role
     if (role === 'ADMIN') router.push('/admin');
-    else if (role === 'DRIVER') router.push('/driver');
+    else if (role === 'DRIVER') router.push('/driver/dashboard');
     else router.push('/'); // Passenger goes to Home
   };
 

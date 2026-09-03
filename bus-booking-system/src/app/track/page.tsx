@@ -22,6 +22,9 @@ export default function TrackingPage() {
   const [searchedPnr, setSearchedPnr] = useState('');
   const [bookingFound, setBookingFound] = useState(false);
   const [vehicleId, setVehicleId] = useState('BUS-101');
+  const [tripStatus, setTripStatus] = useState('IN_PROGRESS');
+  const [boardedCount, setBoardedCount] = useState(0);
+  const [currentStop, setCurrentStop] = useState('Rajpura');
 
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => {
@@ -33,6 +36,20 @@ export default function TrackingPage() {
       }
     }, 0);
     return () => window.clearTimeout(hydrationTimer);
+  }, []);
+
+  useEffect(() => {
+    const refreshTrip = () => fetch('/api/trip', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((trip) => {
+        setTripStatus(trip.status);
+        setBoardedCount(trip.passengers.filter((passenger: { boarded: boolean }) => passenger.boarded).length);
+        setCurrentStop(trip.stops[trip.currentStopIndex]);
+      })
+      .catch(() => undefined);
+    refreshTrip();
+    const refreshTimer = window.setInterval(refreshTrip, 5000);
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   const checkBooking = (event: React.FormEvent) => {
@@ -56,12 +73,12 @@ export default function TrackingPage() {
           </h1>
           <p className="text-slate-500 mt-1 font-mono">PNR: PNR88291A • PB-10-AB-1234</p>
         </div>
-        <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold flex items-center gap-2 text-sm">
+        <div className={`${tripStatus === 'RUNNING' ? 'bg-green-100 text-green-700' : tripStatus === 'COMPLETED' ? 'bg-slate-200 text-slate-700' : 'bg-amber-100 text-amber-700'} px-4 py-2 rounded-full font-bold flex items-center gap-2 text-sm`}>
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
           </span>
-          GPS Active
+          {tripStatus === 'RUNNING' ? 'GPS Active' : tripStatus === 'COMPLETED' ? 'Trip completed' : 'Trip scheduled'}
         </div>
       </div>
 
@@ -86,7 +103,7 @@ export default function TrackingPage() {
           
           <div className="bg-slate-900 text-white rounded-2xl p-5 mb-8">
             <p className="text-slate-400 text-sm uppercase tracking-wider font-semibold mb-1">Status</p>
-            <h2 className="text-2xl font-bold text-green-400">Running on time</h2>
+            <h2 className="text-2xl font-bold text-green-400">{tripStatus === 'RUNNING' ? 'Running on time' : tripStatus === 'COMPLETED' ? 'Trip completed' : 'Awaiting departure'}</h2>
             
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div>
@@ -95,12 +112,13 @@ export default function TrackingPage() {
               </div>
               <div>
                 <p className="text-slate-400 text-xs uppercase mb-1">Next Stop</p>
-                <p className="font-bold flex items-center gap-1"><MapPin size={16}/> Zirakpur</p>
+                <p className="font-bold flex items-center gap-1"><MapPin size={16}/> {currentStop}</p>
               </div>
             </div>
           </div>
 
-          <h3 className="font-bold text-slate-900 mb-6 text-lg">Journey Timeline</h3>
+          <h3 className="font-bold text-slate-900 mb-2 text-lg">Journey Timeline</h3>
+          <p className="mb-6 text-sm text-slate-500">{boardedCount} passengers boarded</p>
           
           <div className="relative border-l-2 border-slate-200 ml-4 space-y-8 pb-4">
             
