@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight } from "lucide-react";
+import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight, X, Mail, Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 const PLACES = ['Amritsar', 'Chandigarh', 'Delhi', 'Jalandhar', 'Ludhiana', 'Manali', 'Patiala', 'Rajpura', 'Shimla'];
@@ -13,11 +13,6 @@ const formatDateInput = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const formatDateLabel = (date: Date, today: Date) => {
-  const dayLabel = date.toDateString() === today.toDateString() ? 'Today' : date.toLocaleDateString('en-IN', { weekday: 'short' });
-  return `${dayLabel}, ${date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`;
-};
-
 export default function Home() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,6 +22,7 @@ export default function Home() {
   const [to, setTo] = useState('');
   const [activePlaceField, setActivePlaceField] = useState<'from' | 'to' | null>(null);
   const [travelDate, setTravelDate] = useState(formatDateInput(new Date()));
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   
   // State for our recent searches
   const [recentSearches, setRecentSearches] = useState<{from: string, to: string}[]>([]);
@@ -36,13 +32,6 @@ export default function Home() {
   maxBookingDate.setMonth(maxBookingDate.getMonth() + 3);
   const minDate = formatDateInput(today);
   const maxDate = formatDateInput(maxBookingDate);
-  const dateOptions = Array.from({ length: 105 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - 7 + index);
-    const value = formatDateInput(date);
-    return { value, label: formatDateLabel(date, today), disabled: value < minDate || value > maxDate };
-  });
-
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => {
       const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -107,7 +96,7 @@ export default function Home() {
         <div className="hidden items-center gap-6 font-medium text-slate-600 md:flex">
           <a href="/track" className="transition hover:text-[#d9232e]">Track Ticket</a>
           <a href="#destinations" className="transition hover:text-[#d9232e]">Destinations</a>
-          <a href="#support" className="transition hover:text-[#d9232e]">Support</a>
+          <button type="button" onClick={() => setIsSupportOpen(true)} className="transition hover:text-[#d9232e]">Support</button>
         </div>
         
         <div className="flex items-center gap-3">
@@ -116,7 +105,7 @@ export default function Home() {
               <span className="hidden items-center gap-2 font-bold text-slate-700 md:flex">
                 <UserCircle size={20} className="text-[#d9232e]" /> Hi, Girikshit!
               </span>
-              <a href="#" className="hidden font-semibold text-[#d9232e] hover:underline md:block">My Bookings</a>
+              <a href="/ticket" className="hidden font-semibold text-[#d9232e] hover:underline md:block">My Bookings</a>
               <button 
                 onClick={handleLogout}
                 className="px-4 py-2 font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2"
@@ -160,7 +149,7 @@ export default function Home() {
                   onFocus={() => setActivePlaceField('from')}
                   onBlur={() => setTimeout(() => setActivePlaceField(null), 150)}
                   placeholder="Select boarding point"
-                  className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:border-[#d9232e] focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
                 />
               </div>
               {activePlaceField === 'from' && (
@@ -179,7 +168,7 @@ export default function Home() {
                   onFocus={() => setActivePlaceField('to')}
                   onBlur={() => setTimeout(() => setActivePlaceField(null), 150)}
                   placeholder="Select destination"
-                  className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-900 transition focus:border-[#d9232e] focus:outline-none focus:ring-2 focus:ring-[#d9232e]"
                 />
               </div>
               {activePlaceField === 'to' && (
@@ -187,7 +176,7 @@ export default function Home() {
               )}
             </div>
 
-            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-[#d9232e] shadow-sm transition hover:bg-red-50">
+            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-white text-[#d9232e] shadow-md ring-1 ring-slate-200 transition hover:scale-105 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#d9232e] focus:ring-offset-1">
               <ArrowLeftRight size={17} />
             </button>
             </div>
@@ -196,12 +185,10 @@ export default function Home() {
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-3 text-slate-400" size={20} />
-                <select value={travelDate} onChange={(e) => setTravelDate(e.target.value)} className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]">
-                  {dateOptions.map((option) => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}
-                </select>
+                <input type="date" value={travelDate} min={minDate} max={maxDate} onChange={(e) => setTravelDate(e.target.value)} aria-label="Travel date" className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:border-[#d9232e] focus:outline-none focus:ring-2 focus:ring-[#d9232e]" />
               </div>
             </div>
-            <button onClick={handleSearch} className="flex w-full items-center justify-center gap-2 bg-[#d9232e] py-3 font-bold text-white shadow-lg shadow-red-200 transition-all hover:bg-[#b91c27] active:scale-95">
+            <button onClick={handleSearch} className="btn-pill btn-primary w-full py-3">
               <Search size={20} />
               Search Buses
             </button>
@@ -225,11 +212,26 @@ export default function Home() {
         </div>
       </section>
       <section id="destinations" className="border-t border-slate-200 bg-white px-8 py-16">
-        <div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Popular routes</p><h2 className="mt-2 text-3xl font-bold">Where will you go next?</h2><div className="mt-7 grid gap-3 sm:grid-cols-3">{['Patiala → Chandigarh', 'Delhi → Manali', 'Rajpura → Amritsar'].map(route => <button key={route} onClick={() => { const [routeFrom, routeTo] = route.split(' → '); setFrom(routeFrom); setTo(routeTo); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="border border-slate-200 p-4 text-left font-bold text-slate-700 hover:border-[#d9232e] hover:text-[#d9232e]">{route}</button>)}</div></div>
+        <div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Popular routes</p><h2 className="mt-2 text-3xl font-bold">Where will you go next?</h2><div className="mt-7 grid gap-3 sm:grid-cols-3">{['Patiala → Chandigarh', 'Delhi → Manali', 'Rajpura → Amritsar'].map(route => <button key={route} onClick={() => { const [routeFrom, routeTo] = route.split(' → '); setFrom(routeFrom); setTo(routeTo); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn-pill btn-secondary justify-start px-5 py-4 text-left">{route}</button>)}</div></div>
       </section>
       <section id="support" className="border-t border-slate-200 bg-[#fff8f8] px-8 py-14">
-        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Need help?</p><h2 className="mt-2 text-2xl font-bold">Our passenger support team is here.</h2><p className="mt-2 text-slate-500">For ticket changes, refunds, or route questions, contact support.</p></div><a href="mailto:support@omnibus.example" className="bg-[#d9232e] px-5 py-3 text-center font-bold text-white hover:bg-[#b91c27]">Email support</a></div>
+        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Need help?</p><h2 className="mt-2 text-2xl font-bold">Our passenger support team is here.</h2><p className="mt-2 text-slate-500">For ticket changes, refunds, or route questions, contact support.</p></div><button type="button" onClick={() => setIsSupportOpen(true)} className="btn-pill btn-primary px-5 py-3">Contact support</button></div>
       </section>
+      {isSupportOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 px-4" role="dialog" aria-modal="true" aria-labelledby="support-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-left shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">OmniBus support</p><h2 id="support-title" className="mt-1 text-2xl font-bold text-slate-900">How can we help?</h2></div>
+              <button type="button" onClick={() => setIsSupportOpen(false)} aria-label="Close support dialog" className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X size={20} /></button>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-500">Our team can help with ticket changes, refunds, route questions, and booking issues.</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <a href="mailto:support@omnibus.example" className="flex items-center justify-center gap-2 rounded-lg bg-[#d9232e] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#b91c27]"><Mail size={17} /> Email us</a>
+              <a href="tel:+911800123456" className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#d9232e] hover:text-[#d9232e]"><Phone size={17} /> Call support</a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

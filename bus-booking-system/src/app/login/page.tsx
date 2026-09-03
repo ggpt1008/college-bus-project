@@ -58,21 +58,21 @@ const handleSubmit = (e: React.FormEvent) => {
             <button 
               type="button"
               onClick={() => setRole('PASSENGER')}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${role === 'PASSENGER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`btn-pill flex-1 py-2 text-sm ${role === 'PASSENGER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <User size={16} /> Passenger
             </button>
             <button 
               type="button"
               onClick={() => setRole('DRIVER')}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${role === 'DRIVER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`btn-pill flex-1 py-2 text-sm ${role === 'DRIVER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <BusFront size={16} /> Driver
             </button>
             <button 
               type="button"
               onClick={() => setRole('ADMIN')}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${role === 'ADMIN' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`btn-pill flex-1 py-2 text-sm ${role === 'ADMIN' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Shield size={16} /> Admin
             </button>
@@ -108,7 +108,7 @@ const handleSubmit = (e: React.FormEvent) => {
               </div>
             </div>
 
-            <button type="submit" className="w-full py-4 mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95">
+            <button type="submit" className="btn-pill w-full bg-blue-600 py-4 text-white shadow-lg shadow-blue-200 hover:bg-blue-700">
               {isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={20} />
             </button>
           </form>

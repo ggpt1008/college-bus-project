@@ -42,7 +42,7 @@ export default function SearchResultsPage() {
             <CalendarDays size={16} /> Wed, 03 Sep 2026 <span className="text-slate-300">|</span> {filteredBuses.length} buses found
           </p>
         </div>
-        <button onClick={() => router.push('/')} className="border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#d9232e] hover:text-[#d9232e]">
+        <button onClick={() => router.push('/')} className="btn-pill btn-secondary px-5 py-2.5 text-sm">
           Modify Search
         </button>
         </div>
@@ -55,7 +55,7 @@ export default function SearchResultsPage() {
           <button
             key={type}
             onClick={() => setFilterType(type)}
-            className={`border px-4 py-2 text-xs font-bold transition-all ${filterType === type ? 'border-[#d9232e] bg-[#d9232e] text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-[#d9232e] hover:text-[#d9232e]'}`}
+            className={`btn-pill px-4 py-2 text-xs ${filterType === type ? 'bg-[#d9232e] text-white shadow-md shadow-red-200' : 'border border-slate-200 bg-white text-slate-600 hover:border-[#d9232e] hover:text-[#d9232e]'}`}
           >
             {type}
           </button>
@@ -102,7 +102,7 @@ export default function SearchResultsPage() {
               </div>
               <button 
                 onClick={() => router.push('/book')}
-                className="bg-[#d9232e] px-6 py-3 font-bold text-white shadow-sm transition-all hover:bg-[#b91c27] active:scale-95"
+                className="btn-pill btn-primary px-6 py-3"
               >
                 View Seats
               </button>

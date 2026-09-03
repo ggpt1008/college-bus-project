@@ -61,8 +61,8 @@ export default function LiveMap({ vehicleId = 'BUS-101' }: { vehicleId?: string 
       style={{ height: '100%', width: '100%', borderRadius: '1.5rem', zIndex: 10 }}
     >
       <TileLayer 
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" 
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; OpenStreetMap contributors'
       />
       
       {/* The Route Line */}

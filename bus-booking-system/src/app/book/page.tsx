@@ -80,7 +80,7 @@ export default function BookingPage() {
             <BusFront size={29} strokeWidth={2.5} />
             <span className="text-xl font-extrabold tracking-tight">OmniBus</span>
           </button>
-          <button onClick={() => router.push('/search')} className="text-sm font-semibold text-slate-600 hover:text-[#d9232e]">Back to buses</button>
+          <button onClick={() => router.push('/search')} className="btn-pill btn-secondary px-4 py-2 text-sm">Back to buses</button>
         </div>
       </header>
       
@@ -187,7 +187,7 @@ export default function BookingPage() {
               <button 
                 onClick={handleProceedToPayment}
                 disabled={isLocking}
-                className="mt-2 flex w-full items-center justify-center gap-2 bg-[#d9232e] py-3.5 font-bold text-white shadow-lg shadow-red-100 transition-all hover:bg-[#b91c27] disabled:opacity-70"
+                className="btn-pill btn-primary mt-2 w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isLocking ? <><Lock size={18} className="animate-pulse" /> Locking...</> : <>Proceed to Payment <ArrowRight size={18} /></>}
               </button>

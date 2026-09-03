@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fb;
+  --foreground: #172033;
+  --brand: #d9232e;
+  --brand-dark: #b91c27;
+  --ink-muted: #64748b;
 }
 
 @theme inline {
@@ -12,15 +15,72 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 28%, transparent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .btn-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    font-weight: 700;
+    transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .btn-pill:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .btn-pill:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-primary {
+    background: var(--brand);
+    color: white;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 22%, transparent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--brand-dark);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--brand) 30%, transparent);
+  }
+
+  .btn-secondary {
+    border: 1px solid #dbe2ec;
+    background: white;
+    color: #334155;
+    box-shadow: 0 4px 12px rgb(15 23 42 / 5%);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--brand);
+    color: var(--brand);
+    box-shadow: 0 8px 18px rgb(15 23 42 / 8%);
+  }
 }
