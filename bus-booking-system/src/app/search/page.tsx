@@ -3,16 +3,9 @@
 import React, { useState } from 'react';
 import { BusFront, ArrowRight, Filter, CalendarDays } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { BUS_FLEET } from '@/lib/bus-data';
 
-// Extended database representing all required bus types
-const ALL_BUSES = [
-  { id: 'BUS-101', operator: 'OmniBus Elite', type: 'AC Express', departure: '06:00', arrival: '08:15', duration: '2h 15m', price: 650, seatsLeft: 24, amenities: ['AC', 'WiFi'] },
-  { id: 'BUS-102', operator: 'Punjab Connect', type: 'Non-AC Express', departure: '08:30', arrival: '11:00', duration: '2h 30m', price: 350, seatsLeft: 42, amenities: [] },
-  { id: 'BUS-103', operator: 'GreenLine Transit', type: 'Electric Local', departure: '10:00', arrival: '12:45', duration: '2h 45m', price: 300, seatsLeft: 18, amenities: ['USB Charging'] },
-  { id: 'BUS-104', operator: 'Royal Travels', type: 'Non-AC Private', departure: '12:00', arrival: '14:30', duration: '2h 30m', price: 400, seatsLeft: 8, amenities: ['Reading Lights'] },
-  { id: 'BUS-105', operator: 'Metro Express', type: 'AC Express', departure: '14:30', arrival: '16:45', duration: '2h 15m', price: 700, seatsLeft: 15, amenities: ['AC', 'CCTV', 'WiFi'] },
-  { id: 'BUS-106', operator: 'EcoCity Motors', type: 'Electric Local', departure: '16:00', arrival: '18:50', duration: '2h 50m', price: 280, seatsLeft: 30, amenities: ['USB Charging'] },
-];
+const ALL_BUSES = BUS_FLEET;
 
 export default function SearchResultsPage() {
   const router = useRouter();
@@ -72,10 +65,10 @@ export default function SearchResultsPage() {
       {/* Bus List */}
       <div className="mx-auto max-w-5xl space-y-3 px-4 pb-10 md:px-0">
         {filteredBuses.map((bus) => (
-          <div key={bus.id} className="flex flex-col items-center justify-between gap-5 border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-[#d9232e] lg:flex-row">
+          <div key={bus.vehicleId} className="flex flex-col items-center justify-between gap-5 border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-[#d9232e] lg:flex-row">
             
             <div className="w-full lg:w-1/4">
-              <span className="bg-red-50 px-2 py-1 font-mono text-xs font-bold text-[#d9232e]">{bus.id}</span>
+              <span className="bg-red-50 px-2 py-1 font-mono text-xs font-bold text-[#d9232e]">{bus.vehicleId}</span>
               <h2 className="font-bold text-lg text-slate-900 mt-1">{bus.operator}</h2>
               <p className="text-slate-500 text-sm font-medium">{bus.type}</p>
             </div>
@@ -83,7 +76,7 @@ export default function SearchResultsPage() {
             <div className="w-full lg:w-2/4 flex items-center justify-between px-4 lg:px-8 border-y lg:border-y-0 lg:border-x border-slate-100 py-4 lg:py-0">
               <div className="text-center">
                 <p className="text-2xl font-bold text-slate-900">{bus.departure}</p>
-                <p className="text-xs text-slate-400 uppercase font-semibold">Patiala</p>
+                <p className="text-xs text-slate-400 uppercase font-semibold">{bus.from}</p>
               </div>
               
               <div className="flex-1 flex flex-col items-center px-4">
@@ -96,7 +89,7 @@ export default function SearchResultsPage() {
 
               <div className="text-center">
                 <p className="text-2xl font-bold text-slate-900">{bus.arrival}</p>
-                <p className="text-xs text-slate-400 uppercase font-semibold">Chandigarh</p>
+                <p className="text-xs text-slate-400 uppercase font-semibold">{bus.to}</p>
               </div>
             </div>
 

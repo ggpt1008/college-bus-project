@@ -44,6 +44,8 @@ export default function PaymentPage() {
     const booking = {
       pnr: 'OMNI' + Math.floor(100000 + Math.random() * 900000),
       status: 'CONFIRMED',
+      vehicleId: 'BUS-101',
+      registrationNumber: 'PB-10-AB-1234',
       route: 'Patiala -> Chandigarh',
       date: '03 Sep 2026',
       departure: '06:00 AM',

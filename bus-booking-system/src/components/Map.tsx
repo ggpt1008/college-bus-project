@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Fix for default map icons missing in Next.js
 const customIcon = new L.Icon({
@@ -24,15 +24,35 @@ const busIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-export default function LiveMap() {
+export default function LiveMap({ vehicleId = 'BUS-101' }: { vehicleId?: string }) {
   // Coordinates for the route
   const patiala = [30.3398, 76.3869] as [number, number];
   const rajpura = [30.4832, 76.5933] as [number, number];
   const zirakpur = [30.6425, 76.8173] as [number, number];
   const chandigarh = [30.7333, 76.7794] as [number, number];
   
-  // Simulated current bus location (between Rajpura and Zirakpur)
-  const currentBusLocation = [30.5500, 76.7000] as [number, number];
+  const [currentBusLocation, setCurrentBusLocation] = useState<[number, number]>([30.5500, 76.7000]);
+  const [trackingData, setTrackingData] = useState<{ registrationNumber: string; currentStop: string; updatedAt: string } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const updateLocation = async () => {
+      try {
+        const response = await fetch(`/api/tracking?vehicleId=${encodeURIComponent(vehicleId)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Tracking feed unavailable');
+        const data = await response.json();
+        if (isMounted) {
+          setCurrentBusLocation([data.latitude, data.longitude]);
+          setTrackingData(data);
+        }
+      } catch {
+        // Keep the last known coordinate visible during a temporary feed failure.
+      }
+    };
+    updateLocation();
+    const intervalId = window.setInterval(updateLocation, 15000);
+    return () => { isMounted = false; window.clearInterval(intervalId); };
+  }, [vehicleId]);
 
   return (
     <MapContainer 
@@ -61,9 +81,10 @@ export default function LiveMap() {
       <Marker position={currentBusLocation} icon={busIcon}>
         <Popup>
           <div className="font-sans">
-            <strong>Bus PB-10-AB-1234</strong><br/>
+            <strong>Bus {trackingData?.registrationNumber || 'PB-10-AB-1234'}</strong><br/>
             Status: <span className="text-green-600 font-bold">Running</span><br/>
-            Speed: 65 km/h
+            Next stop: {trackingData?.currentStop || 'Rajpura'}<br/>
+            Updated: {trackingData ? new Date(trackingData.updatedAt).toLocaleTimeString() : 'connecting'}
           </div>
         </Popup>
       </Marker>

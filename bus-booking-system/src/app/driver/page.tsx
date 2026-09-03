@@ -43,6 +43,7 @@ export default function DriverDashboard() {
           <div className="text-right">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Bus</p>
             <p className="font-bold text-white font-mono">PB-10-AB-1234</p>
+            <p className="mt-1 text-xs text-slate-400">{currentStop}</p>
           </div>
         </div>
       </header>
@@ -52,7 +53,7 @@ export default function DriverDashboard() {
         {/* Today's Trip Card */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-slate-900 text-lg">Today's Assignment</h2>
+            <h2 className="font-bold text-slate-900 text-lg">Today&apos;s Assignment</h2>
             <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
               5:30 PM
             </span>

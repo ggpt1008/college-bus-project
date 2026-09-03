@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, Search, BusFront, ShieldCheck, Clock, CreditCard, UserCircle, LogOut, History, ArrowLeftRight } from "lucide-react";
+import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 const PLACES = ['Amritsar', 'Chandigarh', 'Delhi', 'Jalandhar', 'Ludhiana', 'Manali', 'Patiala', 'Rajpura', 'Shimla'];
@@ -11,6 +11,11 @@ const formatDateInput = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const formatDateLabel = (date: Date, today: Date) => {
+  const dayLabel = date.toDateString() === today.toDateString() ? 'Today' : date.toLocaleDateString('en-IN', { weekday: 'short' });
+  return `${dayLabel}, ${date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`;
 };
 
 export default function Home() {
@@ -31,25 +36,24 @@ export default function Home() {
   maxBookingDate.setMonth(maxBookingDate.getMonth() + 3);
   const minDate = formatDateInput(today);
   const maxDate = formatDateInput(maxBookingDate);
+  const dateOptions = Array.from({ length: 105 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 7 + index);
+    const value = formatDateInput(date);
+    return { value, label: formatDateLabel(date, today), disabled: value < minDate || value > maxDate };
+  });
 
   useEffect(() => {
-    // 1. Check Login Status
-    const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const role = localStorage.getItem('userRole');
-    if (loggedIn && role === 'PASSENGER') setIsLoggedIn(true);
+    const hydrationTimer = window.setTimeout(() => {
+      const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const role = localStorage.getItem('userRole');
+      if (loggedIn && role === 'PASSENGER') setIsLoggedIn(true);
 
-    // 2. Load Recent Searches from memory
-    const savedSearches = localStorage.getItem('recentSearches');
-    if (savedSearches) {
-      setRecentSearches(JSON.parse(savedSearches));
-    } else {
-      // If no history, show popular routes as default
-      setRecentSearches([
-        { from: 'Patiala', to: 'Chandigarh' },
-        { from: 'Delhi', to: 'Manali' },
-        { from: 'Rajpura', to: 'Amritsar' }
-      ]);
-    }
+      const savedSearches = localStorage.getItem('recentSearches');
+      if (savedSearches) setRecentSearches(JSON.parse(savedSearches));
+      else setRecentSearches([{ from: 'Patiala', to: 'Chandigarh' }, { from: 'Delhi', to: 'Manali' }, { from: 'Rajpura', to: 'Amritsar' }]);
+    }, 0);
+    return () => window.clearTimeout(hydrationTimer);
   }, []);
 
   const handleLogout = () => {
@@ -58,9 +62,16 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    // Default to Patiala/Chandigarh if they leave it blank for the demo
-    const searchFrom = from || 'Patiala';
-    const searchTo = to || 'Chandigarh';
+    const searchFrom = from.trim();
+    const searchTo = to.trim();
+    if (!searchFrom || !searchTo) {
+      alert('Select both a boarding point and destination.');
+      return;
+    }
+    if (searchFrom === searchTo) {
+      alert('Boarding point and destination must be different.');
+      return;
+    }
     const newSearch = { from: searchFrom, to: searchTo };
 
     // Add new search to the front, remove duplicates, keep only top 3
@@ -95,8 +106,8 @@ export default function Home() {
         </div>
         <div className="hidden items-center gap-6 font-medium text-slate-600 md:flex">
           <a href="/track" className="transition hover:text-[#d9232e]">Track Ticket</a>
-          <a href="#" className="transition hover:text-[#d9232e]">Destinations</a>
-          <a href="#" className="transition hover:text-[#d9232e]">Support</a>
+          <a href="#destinations" className="transition hover:text-[#d9232e]">Destinations</a>
+          <a href="#support" className="transition hover:text-[#d9232e]">Support</a>
         </div>
         
         <div className="flex items-center gap-3">
@@ -137,7 +148,8 @@ export default function Home() {
         <div className="relative z-20 w-full max-w-5xl mt-12 bg-white rounded-2xl shadow-2xl p-4 md:p-6 border border-slate-100">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4 items-end">
             
-            <div className="relative flex flex-col gap-1">
+            <div className="relative grid gap-4 md:col-span-2 md:grid-cols-2">
+            <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">From</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 text-slate-400" size={20} />
@@ -156,11 +168,7 @@ export default function Home() {
               )}
             </div>
 
-            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="flex items-center justify-center gap-2 py-1 text-xs font-bold text-[#d9232e] md:hidden">
-              <ArrowLeftRight size={16} /> Swap places
-            </button>
-
-            <div className="relative flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">To</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 text-slate-400" size={20} />
@@ -179,15 +187,18 @@ export default function Home() {
               )}
             </div>
 
-            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-[119px] z-30 hidden -translate-x-1/2 rounded-full border border-slate-200 bg-white p-2 text-[#d9232e] shadow-sm transition hover:bg-red-50 md:block">
+            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-[#d9232e] shadow-sm transition hover:bg-red-50">
               <ArrowLeftRight size={17} />
             </button>
+            </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="date" value={travelDate} min={minDate} max={maxDate} onChange={(e) => setTravelDate(e.target.value)} className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]" />
+                <select value={travelDate} onChange={(e) => setTravelDate(e.target.value)} className="w-full border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-[#d9232e]">
+                  {dateOptions.map((option) => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}
+                </select>
               </div>
             </div>
             <button onClick={handleSearch} className="flex w-full items-center justify-center gap-2 bg-[#d9232e] py-3 font-bold text-white shadow-lg shadow-red-200 transition-all hover:bg-[#b91c27] active:scale-95">
@@ -212,6 +223,12 @@ export default function Home() {
             <FeatureCard icon={<CreditCard size={32} className="text-indigo-500" />} title="Instant Automated Refunds" description="Cancelled trip? Our state machine handles refunds and suggests alternative routes." />
           </div>
         </div>
+      </section>
+      <section id="destinations" className="border-t border-slate-200 bg-white px-8 py-16">
+        <div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Popular routes</p><h2 className="mt-2 text-3xl font-bold">Where will you go next?</h2><div className="mt-7 grid gap-3 sm:grid-cols-3">{['Patiala → Chandigarh', 'Delhi → Manali', 'Rajpura → Amritsar'].map(route => <button key={route} onClick={() => { const [routeFrom, routeTo] = route.split(' → '); setFrom(routeFrom); setTo(routeTo); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="border border-slate-200 p-4 text-left font-bold text-slate-700 hover:border-[#d9232e] hover:text-[#d9232e]">{route}</button>)}</div></div>
+      </section>
+      <section id="support" className="border-t border-slate-200 bg-[#fff8f8] px-8 py-14">
+        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Need help?</p><h2 className="mt-2 text-2xl font-bold">Our passenger support team is here.</h2><p className="mt-2 text-slate-500">For ticket changes, refunds, or route questions, contact support.</p></div><a href="mailto:support@omnibus.example" className="bg-[#d9232e] px-5 py-3 text-center font-bold text-white hover:bg-[#b91c27]">Email support</a></div>
       </section>
     </div>
   );

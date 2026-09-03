@@ -21,11 +21,16 @@ export default function TrackingPage() {
   const [pnr, setPnr] = useState('');
   const [searchedPnr, setSearchedPnr] = useState('');
   const [bookingFound, setBookingFound] = useState(false);
+  const [vehicleId, setVehicleId] = useState('BUS-101');
 
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => {
       const savedBooking = localStorage.getItem('latestBooking');
-      if (savedBooking) setPnr(JSON.parse(savedBooking).pnr);
+      if (savedBooking) {
+        const booking = JSON.parse(savedBooking);
+        setPnr(booking.pnr);
+        setVehicleId(booking.vehicleId || 'BUS-101');
+      }
     }, 0);
     return () => window.clearTimeout(hydrationTimer);
   }, []);
@@ -33,9 +38,11 @@ export default function TrackingPage() {
   const checkBooking = (event: React.FormEvent) => {
     event.preventDefault();
     const savedBooking = localStorage.getItem('latestBooking');
-    const savedPnr = savedBooking ? JSON.parse(savedBooking).pnr : '';
+    const booking = savedBooking ? JSON.parse(savedBooking) : null;
+    const savedPnr = booking?.pnr || '';
     setSearchedPnr(pnr.trim().toUpperCase());
     setBookingFound(pnr.trim().toUpperCase() === savedPnr || pnr.trim().toUpperCase() === 'PNR88291A');
+    if (pnr.trim().toUpperCase() === savedPnr) setVehicleId(booking.vehicleId || 'BUS-101');
   };
 
   return (
@@ -71,7 +78,7 @@ export default function TrackingPage() {
         
         {/* Left Side: The Interactive Map */}
         <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 p-2 h-full relative">
-          <LiveMap />
+          <LiveMap vehicleId={vehicleId} />
         </div>
 
         {/* Right Side: Trip Details & Timeline */}

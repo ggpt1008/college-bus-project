@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, Bus, Map as MapIcon, Users, CalendarDays, 
-  BarChart3, Settings, AlertTriangle, CheckCircle2, TrendingUp,
+  BarChart3, Settings, AlertTriangle, TrendingUp,
   Activity, Plus, Edit, Trash2, Construction
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
