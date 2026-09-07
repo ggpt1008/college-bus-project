@@ -11,13 +11,14 @@ export type BusRecord = {
   price: number;
   seatsLeft: number;
   amenities: string[];
+  routeDistanceKm?: number;
   route: { name: string; latitude: number; longitude: number }[];
 };
 
 const route = (...stops: [string, number, number][]) => stops.map(([name, latitude, longitude]) => ({ name, latitude, longitude }));
 
 export const BUS_FLEET: BusRecord[] = [
-  { vehicleId: 'BUS-101', registrationNumber: 'PB-10-AB-1234', operator: 'OmniBus Elite', type: 'AC Express', from: 'Patiala', to: 'Chandigarh', departure: '06:00', arrival: '08:15', duration: '2h 15m', price: 650, seatsLeft: 24, amenities: ['AC', 'WiFi'], route: route(['Patiala', 30.3398, 76.3869], ['Rajpura', 30.4832, 76.5933], ['Zirakpur', 30.6425, 76.8173], ['Chandigarh', 30.7333, 76.7794]) },
+  { vehicleId: 'BUS-101', registrationNumber: 'PB-10-AB-1234', operator: 'OmniBus Elite', type: 'AC Express', from: 'Patiala', to: 'Chandigarh', departure: '06:00', arrival: '08:15', duration: '2h 15m', price: 650, seatsLeft: 24, amenities: ['AC', 'WiFi'], routeDistanceKm: 65, route: route(['Patiala', 30.3398, 76.3869], ['Rajpura', 30.4832, 76.5933], ['Zirakpur', 30.6425, 76.8173], ['Chandigarh', 30.7333, 76.7794]) },
   { vehicleId: 'BUS-102', registrationNumber: 'PB-11-CD-2056', operator: 'Punjab Connect', type: 'Non-AC Express', from: 'Patiala', to: 'Chandigarh', departure: '08:30', arrival: '11:00', duration: '2h 30m', price: 350, seatsLeft: 42, amenities: [], route: route(['Patiala', 30.3398, 76.3869], ['Rajpura', 30.4832, 76.5933], ['Chandigarh', 30.7333, 76.7794]) },
   { vehicleId: 'BUS-103', registrationNumber: 'PB-12-EF-4310', operator: 'GreenLine Transit', type: 'Electric Local', from: 'Patiala', to: 'Amritsar', departure: '10:00', arrival: '14:10', duration: '4h 10m', price: 520, seatsLeft: 18, amenities: ['USB Charging'], route: route(['Patiala', 30.3398, 76.3869], ['Ludhiana', 30.901, 75.8573], ['Jalandhar', 31.326, 75.5762], ['Amritsar', 31.634, 74.8723]) },
   { vehicleId: 'BUS-104', registrationNumber: 'PB-13-GH-8821', operator: 'Royal Travels', type: 'AC Sleeper', from: 'Delhi', to: 'Manali', departure: '12:00', arrival: '22:30', duration: '10h 30m', price: 1450, seatsLeft: 8, amenities: ['AC', 'Charging'], route: route(['Delhi', 28.6139, 77.209], ['Chandigarh', 30.7333, 76.7794], ['Mandi', 31.708, 76.932], ['Manali', 32.2396, 77.1887]) },

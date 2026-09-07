@@ -16,6 +16,9 @@ export type TripState = {
   currentStopIndex: number;
   stops: string[];
   passengers: TripPassenger[];
+  scheduledDeparture: string;
+  scheduledArrival: string;
+  delayMinutes: number;
   updatedAt: string;
 };
 
@@ -36,6 +39,9 @@ const initialState: TripState = {
     { id: 7, name: 'Vikram Malhotra', seatNumber: '18A', pnr: 'OMNI482972', boarded: false },
     { id: 8, name: 'Ishita Bansal', seatNumber: '18B', pnr: 'OMNI482988', boarded: false },
   ],
+  scheduledDeparture: '2026-09-03T18:00:00+05:30',
+  scheduledArrival: '2026-09-03T20:15:00+05:30',
+  delayMinutes: 0,
   updatedAt: new Date().toISOString(),
 };
 

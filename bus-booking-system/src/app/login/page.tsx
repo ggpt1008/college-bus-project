@@ -1,25 +1,57 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BusFront, Mail, Lock, Shield, User, ArrowRight } from 'lucide-react';
+import { getProviders, signIn } from 'next-auth/react';
+import { BusFront, Mail, Lock, User, ArrowRight, Globe2 } from 'lucide-react';
+import Link from 'next/link';
 
-export default function LoginPage() {
+export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
   const router = useRouter();
-  const [role, setRole] = useState<'PASSENGER' | 'DRIVER' | 'ADMIN'>('PASSENGER');
-  const [isLogin, setIsLogin] = useState(true);
+  const isLogin = mode === 'login';
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
 
-const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    getProviders().then((providers) => setGoogleAvailable(Boolean(providers?.google)));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Save the login state to the browser's memory
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userRole', role);
+    setError('');
+    setIsSubmitting(true);
 
-    // Simulate Authentication Routing based on Role
-    if (role === 'ADMIN') router.push('/admin');
-    else if (role === 'DRIVER') router.push('/driver/dashboard');
-    else router.push('/'); // Passenger goes to Home
+    try {
+      if (!isLogin) {
+        const registration = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const registrationResult = await registration.json();
+        if (!registration.ok) throw new Error(registrationResult.error ?? 'Unable to create your account.');
+      }
+
+      const result = await signIn('credentials', { email, password, redirect: false });
+      if (!result?.ok) throw new Error('Email or password is incorrect.');
+
+      const session = await fetch('/api/auth/session').then((response) => response.json());
+      if (session.user?.role === 'ADMIN') router.push('/admin');
+      else if (session.user?.role === 'DRIVER') router.push('/driver/dashboard');
+      else router.push('/');
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : 'Authentication failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    signIn('google', { callbackUrl: '/' });
   };
 
   return (
@@ -53,38 +85,13 @@ const handleSubmit = (e: React.FormEvent) => {
             <p className="text-slate-500 mt-2">Please enter your details to continue.</p>
           </div>
 
-          {/* Role Selector */}
-          <div className="flex p-1 bg-slate-100 rounded-xl mb-8">
-            <button 
-              type="button"
-              onClick={() => setRole('PASSENGER')}
-              className={`btn-pill flex-1 py-2 text-sm ${role === 'PASSENGER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <User size={16} /> Passenger
-            </button>
-            <button 
-              type="button"
-              onClick={() => setRole('DRIVER')}
-              className={`btn-pill flex-1 py-2 text-sm ${role === 'DRIVER' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <BusFront size={16} /> Driver
-            </button>
-            <button 
-              type="button"
-              onClick={() => setRole('ADMIN')}
-              className={`btn-pill flex-1 py-2 text-sm ${role === 'ADMIN' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Shield size={16} /> Admin
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 text-slate-400" size={20} />
-                  <input type="text" placeholder="John Doe" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
+                  <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="John Doe" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
                 </div>
               </div>
             )}
@@ -93,7 +100,7 @@ const handleSubmit = (e: React.FormEvent) => {
               <label className="block text-sm font-semibold text-slate-600 mb-1">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="email" placeholder="you@example.com" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
               </div>
             </div>
 
@@ -104,20 +111,26 @@ const handleSubmit = (e: React.FormEvent) => {
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="password" placeholder="••••••••" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" minLength={8} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required />
               </div>
             </div>
 
-            <button type="submit" className="btn-pill w-full bg-blue-600 py-4 text-white shadow-lg shadow-blue-200 hover:bg-blue-700">
-              {isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={20} />
+            {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
+            <button type="submit" disabled={isSubmitting} className="btn-pill w-full bg-blue-600 py-4 text-white shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {isSubmitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={20} />
             </button>
           </form>
 
+          {isLogin && googleAvailable && <>
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-400"><span className="h-px flex-1 bg-slate-200" />or<span className="h-px flex-1 bg-slate-200" /></div>
+            <button type="button" onClick={handleGoogleSignIn} className="btn-pill w-full border border-slate-200 bg-white py-3 text-slate-700 hover:bg-slate-50"><Globe2 size={19} /> Continue with Google</button>
+          </>}
+
           <p className="text-center text-sm text-slate-500 mt-8 font-medium">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 font-bold hover:underline">
-              {isLogin ? "Sign up" : "Log in"}
-            </button>
+            <Link href={isLogin ? '/register' : '/login'} className="text-blue-600 font-bold hover:underline">
+              {isLogin ? 'Sign up' : 'Log in'}
+            </Link>
           </p>
 
         </div>

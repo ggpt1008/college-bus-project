@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight, X, Mail, Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 
 const PLACES = ['Amritsar', 'Chandigarh', 'Delhi', 'Jalandhar', 'Ludhiana', 'Manali', 'Patiala', 'Rajpura', 'Shimla'];
 
@@ -15,7 +16,7 @@ const formatDateInput = (date: Date) => {
 
 export default function Home() {
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { data: session } = useSession();
   
   // State for our search inputs
   const [from, setFrom] = useState('');
@@ -34,10 +35,6 @@ export default function Home() {
   const maxDate = formatDateInput(maxBookingDate);
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => {
-      const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
-      const role = localStorage.getItem('userRole');
-      if (loggedIn && role === 'PASSENGER') setIsLoggedIn(true);
-
       const savedSearches = localStorage.getItem('recentSearches');
       if (savedSearches) setRecentSearches(JSON.parse(savedSearches));
       else setRecentSearches([{ from: 'Patiala', to: 'Chandigarh' }, { from: 'Delhi', to: 'Manali' }, { from: 'Rajpura', to: 'Amritsar' }]);
@@ -46,8 +43,7 @@ export default function Home() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
-    setIsLoggedIn(false);
+    signOut({ redirect: false }).finally(() => router.replace('/login'));
   };
 
   const handleSearch = () => {
@@ -100,10 +96,10 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-3">
-          {isLoggedIn ? (
+          {session?.user ? (
             <div className="flex items-center gap-4">
               <span className="hidden items-center gap-2 font-bold text-slate-700 md:flex">
-                <UserCircle size={20} className="text-[#d9232e]" /> Hi, Girikshit!
+                <UserCircle size={20} className="text-[#d9232e]" /> Hi, {session.user.name ?? 'there'}!
               </span>
               <a href="/ticket" className="hidden font-semibold text-[#d9232e] hover:underline md:block">My Bookings</a>
               <button 
@@ -116,7 +112,7 @@ export default function Home() {
           ) : (
             <>
               <a href="/login" className="bg-red-50 px-4 py-2 font-semibold text-[#d9232e] transition hover:bg-red-100">Log In</a>
-              <a href="/login" className="bg-[#d9232e] px-4 py-2 font-semibold text-white shadow-md transition hover:bg-[#b91c27]">Register</a>
+              <a href="/register" className="bg-[#d9232e] px-4 py-2 font-semibold text-white shadow-md transition hover:bg-[#b91c27]">Register</a>
             </>
           )}
         </div>
