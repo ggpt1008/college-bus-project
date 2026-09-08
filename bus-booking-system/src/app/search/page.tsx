@@ -1,19 +1,44 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import { BusFront, ArrowRight, Filter, CalendarDays } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 import { BUS_FLEET } from '@/lib/bus-data';
 
 const ALL_BUSES = BUS_FLEET;
 
 export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={<SearchResultsFallback />}>
+      <SearchResultsContent />
+    </Suspense>
+  );
+}
+
+function SearchResultsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [filterType, setFilterType] = useState('ALL');
 
-  const filteredBuses = filterType === 'ALL' 
-    ? ALL_BUSES 
-    : ALL_BUSES.filter(b => b.type.toUpperCase().includes(filterType));
+  const routeFrom = (searchParams.get('from') ?? '').trim();
+  const routeTo = (searchParams.get('to') ?? '').trim();
+
+  const filteredBuses = useMemo(() => {
+    const normalizedFrom = routeFrom.toLowerCase();
+    const normalizedTo = routeTo.toLowerCase();
+
+    const baseBuses = ALL_BUSES.filter((bus) => {
+      const matchesFrom = !normalizedFrom || bus.from.toLowerCase() === normalizedFrom;
+      const matchesTo = !normalizedTo || bus.to.toLowerCase() === normalizedTo;
+      return matchesFrom && matchesTo;
+    });
+
+    return filterType === 'ALL'
+      ? baseBuses
+      : baseBuses.filter((bus) => bus.type.toUpperCase().includes(filterType));
+  }, [filterType, routeFrom, routeTo]);
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] font-sans text-slate-900">
@@ -25,18 +50,24 @@ export default function SearchResultsPage() {
           </button>
           <div className="flex items-center gap-5 text-sm font-semibold text-slate-600">
             <a href="/track" className="hidden hover:text-[#d9232e] sm:block">Track Ticket</a>
-            <a href="/login" className="hover:text-[#d9232e]">Login</a>
+            {session?.user ? (
+              <>
+                <button type="button" onClick={() => router.push('/')} className="hover:text-[#d9232e]">Profile</button>
+                <button type="button" onClick={() => signOut({ callbackUrl: '/login' })} className="hover:text-[#d9232e]">Logout</button>
+              </>
+            ) : (
+              <a href="/login" className="hover:text-[#d9232e]">Login</a>
+            )}
           </div>
         </div>
       </header>
       
-      {/* Header Info */}
       <div className="mx-auto border-b border-slate-200 bg-white px-4 py-5 md:px-8">
         <div className="mx-auto flex max-w-5xl flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <p className="mb-1 text-xs font-bold uppercase tracking-wider text-[#d9232e]">Bus tickets</p>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            Patiala <ArrowRight size={20} className="text-slate-400" /> Chandigarh
+            {routeFrom || 'Any city'} <ArrowRight size={20} className="text-slate-400" /> {routeTo || 'Any city'}
           </h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
             <CalendarDays size={16} /> Wed, 03 Sep 2026 <span className="text-slate-300">|</span> {filteredBuses.length} buses found
@@ -48,7 +79,6 @@ export default function SearchResultsPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-5 md:px-0">
         <span className="mr-2 flex items-center gap-1 text-sm font-bold text-slate-500"><Filter size={16}/> Filters</span>
         {['ALL', 'AC', 'NON-AC', 'EXPRESS', 'ELECTRIC', 'LOCAL', 'PRIVATE'].map((type) => (
@@ -62,9 +92,13 @@ export default function SearchResultsPage() {
         ))}
       </div>
 
-      {/* Bus List */}
       <div className="mx-auto max-w-5xl space-y-3 px-4 pb-10 md:px-0">
-        {filteredBuses.map((bus) => (
+        {!filteredBuses.length ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+            <p className="text-lg font-bold text-slate-800">No buses found for this route.</p>
+            <p className="mt-2 text-sm text-slate-500">Try a different origin or destination to see available trips.</p>
+          </div>
+        ) : filteredBuses.map((bus) => (
           <div key={bus.vehicleId} className="flex flex-col items-center justify-between gap-5 border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-[#d9232e] lg:flex-row">
             
             <div className="w-full lg:w-1/4">
@@ -101,7 +135,7 @@ export default function SearchResultsPage() {
                 </p>
               </div>
               <button 
-                onClick={() => router.push('/book')}
+                onClick={() => router.push(`/book?vehicle=${bus.vehicleId}&available=${bus.seatsLeft}`)}
                 className="btn-pill btn-primary px-6 py-3"
               >
                 View Seats
@@ -110,6 +144,28 @@ export default function SearchResultsPage() {
 
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function SearchResultsFallback() {
+  return (
+    <div className="min-h-screen bg-[#f5f5f5] font-sans text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-8">
+          <div className="flex items-center gap-2 text-[#d9232e]">
+            <BusFront size={29} strokeWidth={2.5} />
+            <span className="text-xl font-extrabold tracking-tight">OmniBus</span>
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto max-w-5xl px-4 py-10 md:px-0">
+        <div className="animate-pulse rounded-2xl bg-white p-6 shadow-sm">
+          <div className="h-5 w-32 rounded bg-slate-200" />
+          <div className="mt-4 h-8 w-64 rounded bg-slate-200" />
+          <div className="mt-4 h-4 w-48 rounded bg-slate-200" />
+        </div>
       </div>
     </div>
   );

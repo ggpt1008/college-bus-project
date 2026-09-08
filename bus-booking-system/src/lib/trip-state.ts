@@ -8,6 +8,13 @@ export type TripPassenger = {
   boarded: boolean;
 };
 
+export type TripEvent = {
+  id: number;
+  type: 'BOOKING' | 'TRIP_STARTED' | 'TRIP_DELAYED' | 'STOP_UPDATED' | 'PASSENGER_BOARDED' | 'PASSENGER_UNBOARDED' | 'TRIP_COMPLETED';
+  message: string;
+  createdAt: string;
+};
+
 export type TripState = {
   vehicleId: string;
   registrationNumber: string;
@@ -19,6 +26,9 @@ export type TripState = {
   scheduledDeparture: string;
   scheduledArrival: string;
   delayMinutes: number;
+  delayReason: string | null;
+  liveTrackingAvailable: boolean;
+  events: TripEvent[];
   updatedAt: string;
 };
 
@@ -42,6 +52,9 @@ const initialState: TripState = {
   scheduledDeparture: '2026-09-03T18:00:00+05:30',
   scheduledArrival: '2026-09-03T20:15:00+05:30',
   delayMinutes: 0,
+  delayReason: null,
+  liveTrackingAvailable: false,
+  events: [],
   updatedAt: new Date().toISOString(),
 };
 
@@ -57,4 +70,17 @@ export function updateTripState(update: (state: TripState) => void) {
   update(state);
   state.updatedAt = new Date().toISOString();
   return state;
+}
+
+export function addTripEvent(state: TripState, type: TripEvent['type'], message: string) {
+  state.events.unshift({ id: Date.now(), type, message, createdAt: new Date().toISOString() });
+  state.events = state.events.slice(0, 30);
+}
+
+export function registerTripPassenger(input: { name: string; seatNumber: string; pnr: string }) {
+  return updateTripState((trip) => {
+    if (trip.passengers.some((passenger) => passenger.pnr === input.pnr)) return;
+    trip.passengers.push({ id: Math.max(0, ...trip.passengers.map((passenger) => passenger.id)) + 1, ...input, boarded: false });
+    addTripEvent(trip, 'BOOKING', `${input.name} booked seat ${input.seatNumber}`);
+  });
 }

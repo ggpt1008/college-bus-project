@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProviders, signIn } from 'next-auth/react';
-import { BusFront, Mail, Lock, User, ArrowRight, Globe2 } from 'lucide-react';
+import { signIn } from 'next-auth/react';
+import { BusFront, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+
+const roleOptions = ['PASSENGER', 'ADMIN', 'DRIVER'] as const;
+type AccountRole = (typeof roleOptions)[number];
 
 export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
   const router = useRouter();
@@ -12,14 +15,9 @@ export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'regist
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<AccountRole>('PASSENGER');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
-
-  useEffect(() => {
-    getProviders().then((providers) => setGoogleAvailable(Boolean(providers?.google)));
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -30,28 +28,23 @@ export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'regist
         const registration = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password }),
+          body: JSON.stringify({ name, email, password, role: selectedRole }),
         });
         const registrationResult = await registration.json();
         if (!registration.ok) throw new Error(registrationResult.error ?? 'Unable to create your account.');
       }
 
-      const result = await signIn('credentials', { email, password, redirect: false });
-      if (!result?.ok) throw new Error('Email or password is incorrect.');
+      const result = await signIn('credentials', { email, password, role: selectedRole, redirect: false });
+      if (!result?.ok) throw new Error(isLogin ? 'Email, password, or selected role is incorrect.' : 'Unable to sign in with the selected role.');
 
-      const session = await fetch('/api/auth/session').then((response) => response.json());
-      if (session.user?.role === 'ADMIN') router.push('/admin');
-      else if (session.user?.role === 'DRIVER') router.push('/driver/dashboard');
-      else router.push('/');
+      if (selectedRole === 'ADMIN') router.replace('/admin');
+      else if (selectedRole === 'DRIVER') router.replace('/driver/dashboard');
+      else router.replace('/');
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : 'Authentication failed.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/' });
   };
 
   return (
@@ -105,6 +98,23 @@ export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'regist
             </div>
 
             <div>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">Role</label>
+              <div className="relative">
+                <select
+                  value={selectedRole}
+                  onChange={(event) => setSelectedRole(event.target.value as AccountRole)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  {roleOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {role.charAt(0) + role.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-semibold text-slate-600">Password</label>
                 {isLogin && <a href="#" className="text-xs text-blue-600 font-bold hover:underline">Forgot?</a>}
@@ -120,11 +130,6 @@ export default function LoginPage({ mode = 'login' }: { mode?: 'login' | 'regist
               {isSubmitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={20} />
             </button>
           </form>
-
-          {isLogin && googleAvailable && <>
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-400"><span className="h-px flex-1 bg-slate-200" />or<span className="h-px flex-1 bg-slate-200" /></div>
-            <button type="button" onClick={handleGoogleSignIn} className="btn-pill w-full border border-slate-200 bg-white py-3 text-slate-700 hover:bg-slate-50"><Globe2 size={19} /> Continue with Google</button>
-          </>}
 
           <p className="text-center text-sm text-slate-500 mt-8 font-medium">
             {isLogin ? "Don't have an account? " : "Already have an account? "}

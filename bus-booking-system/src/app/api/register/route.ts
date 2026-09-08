@@ -7,6 +7,7 @@ const registrationSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(160),
   password: z.string().min(8).max(128),
+  role: z.enum(['PASSENGER', 'ADMIN', 'DRIVER']).default('PASSENGER'),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(input.password, 12);
     await prisma.user.create({
-      data: { name: input.name, email, passwordHash, role: 'PASSENGER' },
+      data: { name: input.name, email, passwordHash, role: input.role },
     });
 
     return NextResponse.json({ ok: true }, { status: 201 });

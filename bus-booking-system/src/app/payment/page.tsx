@@ -6,14 +6,27 @@ import { ArrowLeft, ArrowRight, Building2, BusFront, Check, CreditCard, LockKeyh
 
 type PaymentMethod = 'UPI' | 'CARD' | 'NET_BANKING';
 
+type BookingDraft = {
+  vehicleId: string;
+  registrationNumber: string;
+  route: string;
+  from: string;
+  to: string;
+  date: string;
+  departure: string;
+  arrival: string;
+  bus: string;
+  selectedSeats: string[];
+  farePerSeat: number;
+  totalFare: number;
+  passenger: string;
+};
+
 const banks = ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'PNB'];
-const baseFare = 2000;
-const gst = 100;
-const platformFee = 35;
-const subtotal = baseFare + gst + platformFee;
 
 export default function PaymentPage() {
   const router = useRouter();
+  const [draft, setDraft] = useState<BookingDraft | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('UPI');
   const [upiId, setUpiId] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -35,10 +48,48 @@ export default function PaymentPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('bookingDraft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft) as BookingDraft;
+        setDraft(parsed);
+        return;
+      } catch {
+        // ignore malformed draft
+      }
+    }
+
+    setDraft({
+      vehicleId: 'BUS-101',
+      registrationNumber: 'PB-10-AB-1234',
+      route: 'Patiala -> Chandigarh',
+      from: 'Patiala',
+      to: 'Chandigarh',
+      date: '03 Sep 2026',
+      departure: '06:00 AM',
+      arrival: '08:15 AM',
+      bus: 'OmniBus Elite',
+      selectedSeats: ['1C'],
+      farePerSeat: 650,
+      totalFare: 650,
+      passenger: 'Girikshit',
+    });
+  }, []);
+
+  const selectedSeatCount = draft?.selectedSeats?.length ?? 1;
+  const baseFare = (draft?.farePerSeat ?? 650) * selectedSeatCount;
+  const gst = Math.round(baseFare * 0.05);
+  const platformFee = selectedSeatCount * 15;
+  const subtotal = baseFare + gst + platformFee;
   const formattedTime = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const cardDigits = cardNumber.replace(/\D/g, '');
   const totalAmount = subtotal - discount;
-  const canPay = method === 'UPI' ? upiId.trim().length >= 3 : method === 'CARD' ? cardDigits.length === 16 && expiry.length >= 4 && cvv.length >= 3 && cardName.trim().length > 1 : Boolean(selectedBank) && (!isOtpStep || otp.length === 6);
+  const canPay = method === 'UPI'
+    ? upiId.trim().length >= 3
+    : method === 'CARD'
+      ? cardDigits.length === 16 && expiry.length >= 4 && cvv.length >= 3 && cardName.trim().length > 1
+      : Boolean(selectedBank) && (!isOtpStep || otp.length === 6);
   const maskedCard = useMemo(() => cardDigits ? cardDigits.replace(/(.{4})/g, '$1 ').trim() : '•••• •••• •••• ••••', [cardDigits]);
   const qrData = encodeURIComponent(`upi://pay?pa=omnibus@upi&pn=OmniBus&am=${totalAmount}&cu=INR`);
 
@@ -73,8 +124,39 @@ export default function PaymentPage() {
     }
     setIsProcessing(true);
     const pnr = `OMNI${Math.floor(100000 + Math.random() * 900000)}`;
-    const booking = { pnr, status: 'CONFIRMED', vehicleId: 'BUS-101', registrationNumber: 'PB-10-AB-1234', route: 'Patiala -> Chandigarh', date: '03 Sep 2026', departure: '06:00 AM', arrival: '08:15 AM', bus: 'OmniBus Elite', seats: '1C, 1D, 2C, 2D', passenger: 'Girikshit', amount: totalAmount, paidWith: method === 'NET_BANKING' ? selectedBank : method };
+    const booking = {
+      pnr,
+      status: 'CONFIRMED',
+      vehicleId: draft?.vehicleId || 'BUS-101',
+      registrationNumber: draft?.registrationNumber || 'PB-10-AB-1234',
+      route: draft?.route || 'Patiala -> Chandigarh',
+      date: draft?.date || '03 Sep 2026',
+      departure: draft?.departure || '06:00 AM',
+      arrival: draft?.arrival || '08:15 AM',
+      bus: draft?.bus || 'OmniBus Elite',
+      seats: draft?.selectedSeats?.join(', ') || '1C',
+      passenger: draft?.passenger || 'Girikshit',
+      amount: totalAmount,
+      paidWith: method === 'NET_BANKING' ? selectedBank : method,
+    };
+
     localStorage.setItem('latestBooking', JSON.stringify(booking));
+
+    if (draft?.selectedSeats?.length) {
+      void fetch('/api/trip', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'BOOK',
+          passenger: {
+            name: draft.passenger,
+            seatNumber: draft.selectedSeats[0],
+            pnr,
+          },
+        }),
+      });
+    }
+
     window.setTimeout(() => router.push(`/success?pnr=${pnr}`), 3000);
   };
 
@@ -111,7 +193,7 @@ export default function PaymentPage() {
             </div>
           </section>
 
-          <aside className="rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl shadow-black/20 lg:sticky lg:top-6"><div className="mb-6 flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Order summary</p><h2 className="mt-1 text-xl font-bold">Your journey</h2></div><div className="rounded-xl bg-red-500/15 p-3 text-red-300"><BusFront size={22} /></div></div><div className="rounded-2xl border border-white/10 bg-[#0b1225] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xl font-extrabold">Patiala</p><p className="mt-1 text-xs text-slate-500">06:00 AM</p></div><div className="flex flex-1 items-center gap-2 px-2"><div className="h-px flex-1 bg-slate-700" /><BusFront size={16} className="text-red-400" /><div className="h-px flex-1 bg-slate-700" /></div><div className="text-right"><p className="text-xl font-extrabold">Chandigarh</p><p className="mt-1 text-xs text-slate-500">08:15 AM</p></div></div><div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 text-sm"><span className="font-semibold text-slate-300">OmniBus Elite</span><span className="text-slate-400">AC Seater · 4 seats</span></div></div><div className="mt-7 rounded-2xl border border-white/10 bg-[#0b1225] p-3"><div className="flex gap-2"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Coupon code" className="min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold text-white outline-none placeholder:text-slate-600" /><button type="button" onClick={applyCoupon} className="btn-pill btn-secondary px-4 py-2 text-xs"><Tag size={14} /> Apply</button></div>{couponMessage && <p className={`mt-2 px-2 text-xs font-semibold ${discount ? 'text-emerald-400' : 'text-amber-300'}`}>{couponMessage}</p>}</div><div className="mt-7 space-y-4 text-sm"><Fare label="Base fare" amount={baseFare} /><Fare label="Taxes & GST (5%)" amount={gst} /><Fare label="Platform fee" amount={platformFee} />{discount > 0 && <Fare label="Coupon discount" amount={-discount} />}</div><div className="mt-6 flex items-end justify-between border-t border-white/10 pt-5"><span className="font-bold text-slate-300">Total amount</span><span className="text-2xl font-extrabold text-white">₹{totalAmount.toLocaleString('en-IN')}</span></div><p className="mt-5 flex items-center gap-2 text-xs leading-5 text-slate-500"><ShieldCheck size={15} className="shrink-0 text-emerald-400" /> Payments are processed through a secure mock gateway.</p></aside>
+          <aside className="rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl shadow-black/20 lg:sticky lg:top-6"><div className="mb-6 flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Order summary</p><h2 className="mt-1 text-xl font-bold">Your journey</h2></div><div className="rounded-xl bg-red-500/15 p-3 text-red-300"><BusFront size={22} /></div></div><div className="rounded-2xl border border-white/10 bg-[#0b1225] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xl font-extrabold">{draft?.from || 'Patiala'}</p><p className="mt-1 text-xs text-slate-500">{draft?.departure || '06:00 AM'}</p></div><div className="flex flex-1 items-center gap-2 px-2"><div className="h-px flex-1 bg-slate-700" /><BusFront size={16} className="text-red-400" /><div className="h-px flex-1 bg-slate-700" /></div><div className="text-right"><p className="text-xl font-extrabold">{draft?.to || 'Chandigarh'}</p><p className="mt-1 text-xs text-slate-500">{draft?.arrival || '08:15 AM'}</p></div></div><div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 text-sm"><span className="font-semibold text-slate-300">{draft?.bus || 'OmniBus Elite'}</span><span className="text-slate-400">{selectedSeatCount} seat{selectedSeatCount > 1 ? 's' : ''}</span></div></div><div className="mt-7 rounded-2xl border border-white/10 bg-[#0b1225] p-3"><div className="flex gap-2"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Coupon code" className="min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold text-white outline-none placeholder:text-slate-600" /><button type="button" onClick={applyCoupon} className="btn-pill btn-secondary px-4 py-2 text-xs"><Tag size={14} /> Apply</button></div>{couponMessage && <p className={`mt-2 px-2 text-xs font-semibold ${discount ? 'text-emerald-400' : 'text-amber-300'}`}>{couponMessage}</p>}</div><div className="mt-7 space-y-4 text-sm"><Fare label="Base fare" amount={baseFare} /><Fare label="Taxes & GST (5%)" amount={gst} /><Fare label="Platform fee" amount={platformFee} /><div className="flex justify-between border-t border-white/10 pt-4"><span className="text-slate-400">Total</span><span className="text-lg font-extrabold text-white">₹{totalAmount.toLocaleString('en-IN')}</span></div></div></aside>
         </div>
       </div>
     </main>

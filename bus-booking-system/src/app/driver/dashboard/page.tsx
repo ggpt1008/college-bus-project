@@ -3,19 +3,19 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, BarChart3, BusFront, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, FileText, History, MapPin, QrCode, ScanLine, ShieldCheck, Signal, UserRound, Users, Wallet, X } from 'lucide-react';
 
-type Passenger = { name: string; seat: string; pnr: string; boarded: boolean };
+type Passenger = { name: string; seatNumber: string; pnr: string; boarded: boolean };
 
 type TripStatus = 'SCHEDULED' | 'RUNNING' | 'DELAYED' | 'COMPLETED';
 
 const initialPassengers: Passenger[] = [
-  { name: 'Aarav Sharma', seat: '1A', pnr: 'OMNI482901', boarded: false },
-  { name: 'Meera Kapoor', seat: '1B', pnr: 'OMNI482914', boarded: false },
-  { name: 'Kabir Singh', seat: '2A', pnr: 'OMNI482928', boarded: false },
-  { name: 'Ananya Gupta', seat: '2B', pnr: 'OMNI482933', boarded: false },
-  { name: 'Rohan Verma', seat: '3A', pnr: 'OMNI482947', boarded: false },
-  { name: 'Simran Kaur', seat: '3B', pnr: 'OMNI482956', boarded: false },
-  { name: 'Vikram Malhotra', seat: '4A', pnr: 'OMNI482972', boarded: false },
-  { name: 'Ishita Bansal', seat: '4B', pnr: 'OMNI482988', boarded: false },
+  { name: 'Aarav Sharma', seatNumber: '1A', pnr: 'OMNI482901', boarded: false },
+  { name: 'Meera Kapoor', seatNumber: '1B', pnr: 'OMNI482914', boarded: false },
+  { name: 'Kabir Singh', seatNumber: '2A', pnr: 'OMNI482928', boarded: false },
+  { name: 'Ananya Gupta', seatNumber: '2B', pnr: 'OMNI482933', boarded: false },
+  { name: 'Rohan Verma', seatNumber: '3A', pnr: 'OMNI482947', boarded: false },
+  { name: 'Simran Kaur', seatNumber: '3B', pnr: 'OMNI482956', boarded: false },
+  { name: 'Vikram Malhotra', seatNumber: '4A', pnr: 'OMNI482972', boarded: false },
+  { name: 'Ishita Bansal', seatNumber: '4B', pnr: 'OMNI482988', boarded: false },
 ];
 
 export default function DriverDashboardPage() {
@@ -24,6 +24,9 @@ export default function DriverDashboardPage() {
   const [passengers, setPassengers] = useState(initialPassengers);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState('');
+  const [selectedPassenger, setSelectedPassenger] = useState<Passenger | null>(null);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [issueSent, setIssueSent] = useState(false);
   const [currentStop, setCurrentStop] = useState('Patiala bus stand');
@@ -43,25 +46,31 @@ export default function DriverDashboardPage() {
   }, []);
 
   const boardedCount = passengers.filter((passenger) => passenger.boarded).length;
-  const toggleBoarded = async (pnr: string) => {
-    const response = await fetch('/api/trip', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'BOARD', pnr }) });
+  const updateBoarding = async (pnr: string, boarded: boolean) => {
+    const response = await fetch('/api/trip', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: boarded ? 'BOARD' : 'UNBOARD', pnr }) });
     if (!response.ok) return;
     const trip = await response.json();
     setPassengers(trip.passengers);
+    setSelectedPassenger(null);
   };
 
   const startScan = () => {
     setIsScannerOpen(true);
     setIsScanning(true);
+    setScanResult('');
     window.setTimeout(() => {
       const nextPassenger = passengers.find((passenger) => !passenger.boarded);
       if (nextPassenger) {
         void fetch('/api/trip', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'BOARD', pnr: nextPassenger.pnr }) })
           .then((response) => response.json())
-          .then((trip) => setPassengers(trip.passengers));
+          .then((trip) => {
+            setPassengers(trip.passengers);
+            setScanResult(`${nextPassenger.name}'s ticket verified`);
+          });
+      } else {
+        setScanResult('All booked passengers are already boarded');
       }
       setIsScanning(false);
-      window.setTimeout(() => setIsScannerOpen(false), 650);
     }, 2000);
   };
 
@@ -112,19 +121,21 @@ export default function DriverDashboardPage() {
         <section className="rounded-3xl border border-white/10 bg-[#10182d] shadow-2xl shadow-black/20">
           <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Boarding list</p><h2 className="mt-1 text-xl font-extrabold">Passenger manifest</h2></div><div className="text-right"><p className="text-2xl font-extrabold text-emerald-400">{boardedCount}/{passengers.length}</p><p className="text-xs font-semibold text-slate-500">Boarded</p></div></div>
           <div className="flex items-center justify-between border-b border-white/10 bg-[#0b1225] px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500"><span className="flex items-center gap-2"><Users size={15} /> {passengers.length} booked passengers</span><span>{passengers.length - boardedCount} pending</span></div>
-          <div className="divide-y divide-white/10">{passengers.map((passenger) => <button type="button" key={passenger.pnr} onClick={() => toggleBoarded(passenger.pnr)} className="flex min-h-20 w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[0.03]"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${passenger.boarded ? 'bg-emerald-400/15 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>{passenger.boarded ? <Check size={19} /> : <UserRound size={18} />}</span><span className="min-w-0 flex-1"><strong className={`block truncate text-sm ${passenger.boarded ? 'text-slate-400 line-through' : 'text-white'}`}>{passenger.name}</strong><span className="mt-1 block text-xs text-slate-500">Seat {passenger.seat} <span className="mx-1 text-slate-700">•</span> {passenger.pnr}</span></span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${passenger.boarded ? 'bg-emerald-400/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>{passenger.boarded ? 'Boarded' : 'Pending'}</span><ChevronRight size={17} className="text-slate-600" /></button>)}</div>
+          <div className="divide-y divide-white/10">{passengers.map((passenger) => <button type="button" key={passenger.pnr} onClick={() => setSelectedPassenger(passenger)} className="flex min-h-20 w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[0.03]"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${passenger.boarded ? 'bg-emerald-400/15 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>{passenger.boarded ? <Check size={19} /> : <UserRound size={18} />}</span><span className="min-w-0 flex-1"><strong className={`block truncate text-sm ${passenger.boarded ? 'text-slate-400 line-through' : 'text-white'}`}>{passenger.name}</strong><span className="mt-1 block text-xs text-slate-500">Seat {passenger.seatNumber} <span className="mx-1 text-slate-700">•</span> {passenger.pnr}</span></span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${passenger.boarded ? 'bg-emerald-400/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>{passenger.boarded ? 'Boarded' : 'Pending'}</span><ChevronRight size={17} className="text-slate-600" /></button>)}</div>
         </section>
 
         <div className="grid grid-cols-2 gap-3"><button type="button" onClick={startScan} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-red-500 px-4 py-3 font-extrabold text-white shadow-lg shadow-red-950/30 transition hover:-translate-y-0.5 hover:bg-red-600"><ScanLine size={21} /> Scan Ticket</button><button type="button" onClick={() => setIsIssueOpen(true)} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#10182d] px-4 py-3 font-bold text-slate-300 transition hover:-translate-y-0.5 hover:border-slate-500"><AlertTriangle size={19} className="text-amber-400" /> Report issue</button></div>
 
         {tripStatus === 'RUNNING' && <button type="button" onClick={updateStop} className="flex min-h-14 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#10182d] px-5 text-left transition hover:border-slate-500"><span className="flex items-center gap-3"><MapPin size={20} className="text-red-300" /><span><strong className="block text-sm">Update current stop</strong><small className="text-xs text-slate-500">Broadcast: {currentStop}</small></span></span><ChevronRight size={18} className="text-slate-500" /></button>}
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Driver tools"><ToolCard icon={<History size={19} />} label="Trip history" /><ToolCard icon={<BarChart3 size={19} />} label="Performance" /><ToolCard icon={<FileText size={19} />} label="Documents" /><ToolCard icon={<CircleHelp size={19} />} label="Help centre" /></section>
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Driver tools"><ToolCard icon={<History size={19} />} label="Trip history" onClick={() => setActiveTool('Trip history')} /><ToolCard icon={<BarChart3 size={19} />} label="Performance" onClick={() => setActiveTool('Performance')} /><ToolCard icon={<FileText size={19} />} label="Documents" onClick={() => setActiveTool('Documents')} /><ToolCard icon={<CircleHelp size={19} />} label="Help centre" onClick={() => setIsIssueOpen(true)} /></section>
 
         <section className="rounded-3xl border border-white/10 bg-[#10182d] p-5 shadow-2xl shadow-black/20"><div className="flex items-center justify-between"><h2 className="font-extrabold">Recent trips</h2><button type="button" className="text-xs font-bold text-red-300">View all</button></div><div className="mt-4 space-y-3"><TripRow route="Patiala → Chandigarh" time="Yesterday · 5:30 PM" status="Completed" /><TripRow route="Chandigarh → Shimla" time="31 Aug · 7:15 AM" status="Completed" /></div></section>
       </div>
 
-      {isScannerOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-5 text-center shadow-2xl"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm font-bold"><QrCode size={18} className="text-red-400" /> Scan passenger ticket</div><button type="button" onClick={() => { setIsScannerOpen(false); setIsScanning(false); }} aria-label="Close scanner" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><div className="relative mt-5 flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-[#050914]"><div className="absolute inset-8 rounded-xl border-2 border-red-400/70"><span className="absolute -left-1 -top-1 h-7 w-7 border-l-4 border-t-4 border-red-400" /><span className="absolute -right-1 -top-1 h-7 w-7 border-r-4 border-t-4 border-red-400" /><span className="absolute -bottom-1 -left-1 h-7 w-7 border-b-4 border-l-4 border-red-400" /><span className="absolute -bottom-1 -right-1 h-7 w-7 border-b-4 border-r-4 border-red-400" /></div>{isScanning ? <><QrCode size={104} className="text-slate-500" /><span className="absolute left-10 right-10 top-1/2 h-0.5 animate-pulse bg-red-400 shadow-[0_0_14px_#f87171]" /></> : <CheckCircle2 size={74} className="text-emerald-400" />}</div><p className="mt-4 font-bold">{isScanning ? 'Scanning ticket...' : 'Ticket verified'}</p><p className="mt-1 text-sm text-slate-500">{isScanning ? 'Hold the passenger QR inside the frame' : 'Passenger marked as boarded'}</p></div></div>}
+      {activeTool && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 text-center shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">{activeTool}</h2><button type="button" onClick={() => setActiveTool(null)} aria-label={`Close ${activeTool}`} className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><p className="mt-6 text-sm leading-6 text-slate-400">{activeTool === 'Trip history' ? 'Your completed routes and recent assignments will appear here.' : 'This driver tool is connected and ready for operational data.'}</p><button type="button" onClick={() => setActiveTool(null)} className="btn-pill btn-primary mt-6 w-full py-3">Close</button></div></div>}
+      {selectedPassenger && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-red-300">Passenger status</p><h2 className="mt-1 text-xl font-extrabold">{selectedPassenger.name}</h2><p className="mt-1 text-sm text-slate-500">Seat {selectedPassenger.seatNumber} • {selectedPassenger.pnr}</p></div><button type="button" onClick={() => setSelectedPassenger(null)} aria-label="Close passenger status" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><p className="mt-6 text-sm text-slate-300">Current status: <strong>{selectedPassenger.boarded ? 'Boarded' : 'Pending'}</strong></p><div className="mt-5 grid gap-3"><button type="button" onClick={() => updateBoarding(selectedPassenger.pnr, true)} className="btn-pill btn-primary w-full py-3"><Check size={18} /> Mark boarded</button><button type="button" onClick={() => updateBoarding(selectedPassenger.pnr, false)} className="btn-pill w-full border border-white/10 bg-[#0b1225] py-3 text-slate-200 hover:border-slate-500">Mark not boarded</button></div></div></div>}
+      {isScannerOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-5 text-center shadow-2xl"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm font-bold"><QrCode size={18} className="text-red-400" /> Scan passenger ticket</div><button type="button" onClick={() => { setIsScannerOpen(false); setIsScanning(false); }} aria-label="Close scanner" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><div className="relative mt-5 flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-[#050914]"><div className="absolute inset-8 rounded-xl border-2 border-red-400/70"><span className="absolute -left-1 -top-1 h-7 w-7 border-l-4 border-t-4 border-red-400" /><span className="absolute -right-1 -top-1 h-7 w-7 border-r-4 border-t-4 border-red-400" /><span className="absolute -bottom-1 -left-1 h-7 w-7 border-b-4 border-l-4 border-red-400" /><span className="absolute -bottom-1 -right-1 h-7 w-7 border-b-4 border-r-4 border-red-400" /></div>{isScanning ? <><QrCode size={104} className="text-slate-500" /><span className="absolute left-10 right-10 top-1/2 h-0.5 animate-pulse bg-red-400 shadow-[0_0_14px_#f87171]" /></> : <CheckCircle2 size={74} className="text-emerald-400" />}</div><p className="mt-4 font-bold">{isScanning ? 'Scanning ticket...' : scanResult ? 'Ticket verified' : 'Scanner ready'}</p><p className="mt-1 text-sm text-slate-500">{isScanning ? 'Hold the passenger QR inside the frame' : scanResult || 'The simulated scanner verifies the next pending passenger.'}</p>{!isScanning && <button type="button" onClick={startScan} className="btn-pill btn-primary mt-5 w-full py-3"><ScanLine size={18} /> Scan again</button>}</div></div>}
       {isIssueOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-amber-300">Driver support</p><h2 className="mt-1 text-xl font-extrabold">Report an issue</h2></div><button type="button" onClick={() => setIsIssueOpen(false)} aria-label="Close issue dialog" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div>{issueSent ? <div className="py-8 text-center"><CheckCircle2 size={42} className="mx-auto text-emerald-400" /><p className="mt-3 font-bold">Issue sent to operations</p><p className="mt-1 text-sm text-slate-500">A coordinator will contact you shortly.</p></div> : <><label className="mt-6 block text-sm font-bold text-slate-300">What happened?<select className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1225] px-4 py-3 text-white outline-none"><option>Vehicle problem</option><option>Traffic or delay</option><option>Passenger assistance</option><option>Other</option></select></label><button type="button" onClick={() => setIssueSent(true)} className="btn-pill btn-primary mt-5 w-full py-3">Send report</button></>}</div></div>}
     </main>
   );
@@ -134,8 +145,8 @@ function SummaryStat({ icon, value, label }: { icon: React.ReactNode; value: str
   return <div className="rounded-2xl border border-white/10 bg-[#10182d] p-3"><div className="flex items-center gap-1.5 text-slate-500">{icon}<span className="text-[10px] font-bold uppercase tracking-wider">{label}</span></div><p className="mt-2 text-lg font-extrabold text-white">{value}</p></div>;
 }
 
-function ToolCard({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return <button type="button" className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#10182d] text-xs font-bold text-slate-300 transition hover:-translate-y-0.5 hover:border-slate-500"><span className="text-red-300">{icon}</span>{label}</button>;
+function ToolCard({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#10182d] text-xs font-bold text-slate-300 transition hover:-translate-y-0.5 hover:border-slate-500"><span className="text-red-300">{icon}</span>{label}</button>;
 }
 
 function TripRow({ route, time, status }: { route: string; time: string; status: string }) {

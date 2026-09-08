@@ -1,15 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
-
-const googleProvider = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-  ? GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    })
-  : null;
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -20,43 +12,32 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        role: { label: 'Role', type: 'text' },
       },
       async authorize(credentials) {
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
+        const selectedRole = credentials?.role?.toString().trim().toUpperCase();
 
-        if (!email || !password) return null;
+        if (!email || !password || !selectedRole) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) return null;
+        if (user.role !== selectedRole) return null;
 
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
-    ...(googleProvider ? [googleProvider] : []),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider !== 'google' || !user.email) return true;
-
-      const existingUser = await prisma.user.findUnique({ where: { email: user.email.toLowerCase() } });
-      const databaseUser = existingUser ?? await prisma.user.create({
-        data: {
-          name: user.name ?? user.email.split('@')[0],
-          email: user.email.toLowerCase(),
-          passwordHash: '',
-          role: 'PASSENGER',
-        },
-      });
-
-      user.id = databaseUser.id;
-      user.role = databaseUser.role;
-      return true;
-    },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+      }
+      if (trigger === 'update' && session) {
+        if (typeof session.name === 'string') token.name = session.name;
+        if (typeof session.email === 'string') token.email = session.email;
       }
       return token;
     },

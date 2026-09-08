@@ -24,7 +24,8 @@ export function GET(request: Request) {
     vehicleId: bus.vehicleId,
     registrationNumber: bus.registrationNumber,
     tripId: `TRIP-${bus.vehicleId}`,
-    status: tripState.vehicleId === vehicleId ? tripState.status : 'RUNNING',
+    status: tripState.vehicleId === vehicleId ? tripState.status : 'SCHEDULED',
+    liveTrackingAvailable: tripState.vehicleId === vehicleId && tripState.liveTrackingAvailable,
     currentStop: tripState.vehicleId === vehicleId ? tripState.stops[tripState.currentStopIndex] : start.name,
     boardedCount: tripState.vehicleId === vehicleId ? tripState.passengers.filter((passenger) => passenger.boarded).length : 0,
     latitude: start.latitude + (end.latitude - start.latitude) * segmentProgress,
@@ -36,6 +37,7 @@ export function GET(request: Request) {
     nextStopEtaMinutes: remainingMinutes,
     scheduledArrival: new Date(arrival).toISOString(),
     delayMinutes: tripState.delayMinutes,
+    delayReason: tripState.delayReason,
     updatedAt: new Date().toISOString(),
     source: 'Local GTFS simulation',
   });

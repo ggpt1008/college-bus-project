@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight, X, Mail, Phone } from "lucide-react";
+import { MapPin, Calendar, Search, BusFront, ShieldCheck, CreditCard, UserCircle, LogOut, History, ArrowLeftRight, X, Mail, Phone, UserCog, Save } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -16,23 +16,56 @@ const formatDateInput = (date: Date) => {
 
 export default function Home() {
   const router = useRouter();
-  const { data: session } = useSession();
-  
+  const { data: session, update } = useSession();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profile, setProfile] = useState({
+    name: session?.user?.name ?? 'Guest User',
+    email: session?.user?.email ?? 'guest@example.com',
+    phone: '',
+    city: '',
+    role: (session?.user?.role ?? 'PASSENGER').toUpperCase(),
+  });
+
+  useEffect(() => {
+    if (!session?.user) return;
+    let isCurrent = true;
+    fetch('/api/profile')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load your profile.');
+        return response.json();
+      })
+      .then((data) => {
+        if (isCurrent && data.profile) setProfile(data.profile);
+      })
+      .catch((error: Error) => {
+        if (isCurrent) setProfileError(error.message);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [session]);
+
   // State for our search inputs
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [activePlaceField, setActivePlaceField] = useState<'from' | 'to' | null>(null);
-  const [travelDate, setTravelDate] = useState(formatDateInput(new Date()));
+  const [travelDate, setTravelDate] = useState('');
+  const [dateBounds, setDateBounds] = useState({ min: '', max: '' });
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   
   // State for our recent searches
   const [recentSearches, setRecentSearches] = useState<{from: string, to: string}[]>([]);
 
-  const today = new Date();
-  const maxBookingDate = new Date(today);
-  maxBookingDate.setMonth(maxBookingDate.getMonth() + 3);
-  const minDate = formatDateInput(today);
-  const maxDate = formatDateInput(maxBookingDate);
+  useEffect(() => {
+    const today = new Date();
+    const maxBookingDate = new Date(today);
+    maxBookingDate.setMonth(maxBookingDate.getMonth() + 3);
+    setTravelDate(formatDateInput(today));
+    setDateBounds({ min: formatDateInput(today), max: formatDateInput(maxBookingDate) });
+  }, []);
+
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => {
       const savedSearches = localStorage.getItem('recentSearches');
@@ -44,6 +77,27 @@ export default function Home() {
 
   const handleLogout = () => {
     signOut({ redirect: false }).finally(() => router.replace('/login'));
+  };
+
+  const handleProfileSave = async () => {
+    setIsProfileSaving(true);
+    setProfileError('');
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: profile.name, email: profile.email, phone: profile.phone, city: profile.city }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Unable to save your profile.');
+      setProfile(data.profile);
+      await update({ name: data.profile.name, email: data.profile.email });
+      setIsProfileOpen(false);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Unable to save your profile.');
+    } finally {
+      setIsProfileSaving(false);
+    }
   };
 
   const handleSearch = () => {
@@ -59,16 +113,15 @@ export default function Home() {
     }
     const newSearch = { from: searchFrom, to: searchTo };
 
-    // Add new search to the front, remove duplicates, keep only top 3
     const updatedSearches = [
-      newSearch, 
+      newSearch,
       ...recentSearches.filter(s => s.from !== searchFrom || s.to !== searchTo)
     ].slice(0, 3);
-    
+
     setRecentSearches(updatedSearches);
     localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-    
-    router.push('/search');
+
+    router.push(`/search?from=${encodeURIComponent(searchFrom)}&to=${encodeURIComponent(searchTo)}`);
   };
 
   const selectPlace = (field: 'from' | 'to', place: string) => {
@@ -98,10 +151,11 @@ export default function Home() {
         <div className="flex items-center gap-3">
           {session?.user ? (
             <div className="flex items-center gap-4">
-              <span className="hidden items-center gap-2 font-bold text-slate-700 md:flex">
-                <UserCircle size={20} className="text-[#d9232e]" /> Hi, {session.user.name ?? 'there'}!
-              </span>
+              <button type="button" onClick={() => { setProfileError(''); setIsProfileOpen(true); }} className="hidden items-center gap-2 font-bold text-slate-700 md:flex">
+                <UserCircle size={20} className="text-[#d9232e]" /> {profile.name || session.user.name || 'Profile'}
+              </button>
               <a href="/ticket" className="hidden font-semibold text-[#d9232e] hover:underline md:block">My Bookings</a>
+              <button onClick={() => { setProfileError(''); setIsProfileOpen(true); }} className="md:hidden rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Profile</button>
               <button 
                 onClick={handleLogout}
                 className="px-4 py-2 font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2"
@@ -172,7 +226,7 @@ export default function Home() {
               )}
             </div>
 
-            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-white text-[#d9232e] shadow-md ring-1 ring-slate-200 transition hover:scale-105 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#d9232e] focus:ring-offset-1">
+            <button type="button" onClick={swapPlaces} aria-label="Swap boarding point and destination" title="Swap places" className="absolute left-1/2 top-1/2 z-30 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-white text-[#d9232e] shadow-md ring-1 ring-slate-200 transition hover:scale-105 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#d9232e] focus:ring-offset-1">
               <ArrowLeftRight size={17} />
             </button>
             </div>
@@ -181,7 +235,7 @@ export default function Home() {
               <label className="text-sm font-semibold text-slate-600 ml-1 text-left">Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-3 text-slate-400" size={20} />
-                <input type="date" value={travelDate} min={minDate} max={maxDate} onChange={(e) => setTravelDate(e.target.value)} aria-label="Travel date" className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:border-[#d9232e] focus:outline-none focus:ring-2 focus:ring-[#d9232e]" />
+                <input type="date" value={travelDate} min={dateBounds.min} max={dateBounds.max} onChange={(e) => setTravelDate(e.target.value)} aria-label="Travel date" className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 font-medium text-slate-700 transition focus:border-[#d9232e] focus:outline-none focus:ring-2 focus:ring-[#d9232e]" />
               </div>
             </div>
             <button onClick={handleSearch} className="btn-pill btn-primary w-full py-3">
@@ -208,7 +262,7 @@ export default function Home() {
         </div>
       </section>
       <section id="destinations" className="border-t border-slate-200 bg-white px-8 py-16">
-        <div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Popular routes</p><h2 className="mt-2 text-3xl font-bold">Where will you go next?</h2><div className="mt-7 grid gap-3 sm:grid-cols-3">{['Patiala → Chandigarh', 'Delhi → Manali', 'Rajpura → Amritsar'].map(route => <button key={route} onClick={() => { const [routeFrom, routeTo] = route.split(' → '); setFrom(routeFrom); setTo(routeTo); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn-pill btn-secondary justify-start px-5 py-4 text-left">{route}</button>)}</div></div>
+        <div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Popular routes</p><h2 className="mt-2 text-3xl font-bold">Where will you go next?</h2><div className="mt-7 grid gap-3 sm:grid-cols-3">{['Patiala → Chandigarh', 'Delhi → Manali', 'Rajpura → Amritsar'].map(route => <button key={route} onClick={() => { const [routeFrom, routeTo] = route.split(' → '); setFrom(routeFrom); setTo(routeTo); router.push(`/search?from=${encodeURIComponent(routeFrom)}&to=${encodeURIComponent(routeTo)}`); }} className="btn-pill btn-secondary justify-start px-5 py-4 text-left">{route}</button>)}</div></div>
       </section>
       <section id="support" className="border-t border-slate-200 bg-[#fff8f8] px-8 py-14">
         <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-wider text-[#d9232e]">Need help?</p><h2 className="mt-2 text-2xl font-bold">Our passenger support team is here.</h2><p className="mt-2 text-slate-500">For ticket changes, refunds, or route questions, contact support.</p></div><button type="button" onClick={() => setIsSupportOpen(true)} className="btn-pill btn-primary px-5 py-3">Contact support</button></div>
@@ -224,6 +278,50 @@ export default function Home() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <a href="mailto:support@omnibus.example" className="flex items-center justify-center gap-2 rounded-lg bg-[#d9232e] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#b91c27]"><Mail size={17} /> Email us</a>
               <a href="tel:+911800123456" className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#d9232e] hover:text-[#d9232e]"><Phone size={17} /> Call support</a>
+            </div>
+          </div>
+        </div>
+      )}
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 px-4" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#d9232e]">Profile</p>
+                <h2 id="profile-title" className="mt-1 text-2xl font-bold text-slate-900">{profile.role.charAt(0) + profile.role.slice(1).toLowerCase()} profile</h2>
+              </div>
+              <button type="button" onClick={() => setIsProfileOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              {profileError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{profileError}</p>}
+              <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d9232e]/10 text-[#d9232e]"><UserCog size={22} /></div>
+                <div>
+                  <p className="text-sm text-slate-500">Role</p>
+                  <p className="font-bold text-slate-800">{profile.role}</p>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Full name</label>
+                <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-800 outline-none focus:border-[#d9232e] focus:ring-2 focus:ring-[#d9232e]/20" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Email address</label>
+                <input value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-800 outline-none focus:border-[#d9232e] focus:ring-2 focus:ring-[#d9232e]/20" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Phone</label>
+                  <input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-800 outline-none focus:border-[#d9232e] focus:ring-2 focus:ring-[#d9232e]/20" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">City</label>
+                  <input value={profile.city} onChange={(e) => setProfile({ ...profile, city: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-800 outline-none focus:border-[#d9232e] focus:ring-2 focus:ring-[#d9232e]/20" />
+                </div>
+              </div>
+              <button type="button" onClick={handleProfileSave} disabled={isProfileSaving} className="btn-pill btn-primary mt-2 w-full py-3 disabled:cursor-not-allowed disabled:opacity-70">
+                <Save size={18} /> {isProfileSaving ? 'Saving...' : 'Save profile'}
+              </button>
             </div>
           </div>
         </div>
