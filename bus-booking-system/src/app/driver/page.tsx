@@ -1,4 +1,5 @@
 "use client";
+<<<<<<< HEAD
 
 import React, { useEffect, useState } from 'react';
 import { Bus, MapPin, Navigation, AlertTriangle, CheckCircle2, Users, Clock, Search, QrCode, UserCheck, X } from 'lucide-react';
@@ -212,6 +213,65 @@ export default function DriverDashboard() {
       {isScannerOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-slate-900 p-5 text-center shadow-2xl"><div className="flex items-center justify-between text-sm font-bold text-white"><span className="flex items-center gap-2"><QrCode size={18} className="text-blue-400" /> Scan ticket</span><button type="button" onClick={() => { setIsScannerOpen(false); setIsScanning(false); }} aria-label="Close QR scanner" className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X size={18} /></button></div><div className="relative mt-5 flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-slate-950"><div className="absolute inset-10 rounded-xl border-2 border-blue-400/80"><span className="absolute -left-1 -top-1 h-7 w-7 border-l-4 border-t-4 border-blue-400" /><span className="absolute -right-1 -top-1 h-7 w-7 border-r-4 border-t-4 border-blue-400" /><span className="absolute -bottom-1 -left-1 h-7 w-7 border-b-4 border-l-4 border-blue-400" /><span className="absolute -bottom-1 -right-1 h-7 w-7 border-b-4 border-r-4 border-blue-400" /></div>{isScanning ? <><QrCode size={92} className="text-slate-600" /><span className="absolute left-10 right-10 top-1/2 h-0.5 animate-pulse bg-blue-400 shadow-[0_0_16px_#60a5fa]" /></> : <CheckCircle2 size={68} className="text-emerald-400" />}</div><p className="mt-4 font-bold text-white">{isScanning ? 'Scanning ticket...' : 'Ticket verified'}</p><p className="mt-1 text-sm text-slate-500">{isScanning ? 'Hold the QR code inside the frame' : 'Passenger marked as boarded'}</p></div></div>
       )}
+=======
+import React, { useState, useEffect } from 'react';
+import { MapPin, Navigation } from 'lucide-react';
+
+export default function DriverDashboard() {
+  const [isTracking, setIsTracking] = useState(false);
+  const [location, setLocation] = useState({ lat: 0, lng: 0, speed: 0 });
+
+  useEffect(() => {
+    let watchId: number;
+
+    if (isTracking) {
+      if ('geolocation' in navigator) {
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            const newLoc = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              speed: position.coords.speed || 0
+            };
+            setLocation(newLoc);
+            
+            // Ping the backend
+            fetch('/api/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newLoc)
+            });
+          },
+          (error) => console.error(error),
+          { enableHighAccuracy: true, maximumAge: 0 }
+        );
+      }
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isTracking]);
+
+  return (
+    <div className="min-h-screen bg-slate-950 p-8 text-white flex flex-col items-center justify-center">
+      <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 text-center max-w-md w-full">
+        <Navigation size={48} className={`mx-auto mb-4 ${isTracking ? 'text-green-500 animate-pulse' : 'text-slate-600'}`} />
+        <h1 className="text-2xl font-bold mb-6">Driver Console: CTU-101</h1>
+        
+        <div className="bg-slate-950 p-4 rounded-xl mb-6 flex justify-between items-center text-sm">
+          <span><MapPin size={16} className="inline mr-2 text-blue-400"/> Lat: {location.lat.toFixed(4)}</span>
+          <span>Lng: {location.lng.toFixed(4)}</span>
+        </div>
+
+        <button 
+          onClick={() => setIsTracking(!isTracking)}
+          className={`w-full py-4 rounded-xl font-bold text-lg transition ${isTracking ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+        >
+          {isTracking ? 'End Trip / Stop Tracking' : 'Start Trip & Transmit GPS'}
+        </button>
+      </div>
+>>>>>>> 84927640592e68aa64592d0cdb625924135eeb7a
     </div>
   );
 }
