@@ -25,6 +25,9 @@ export default function TrackingPage() {
   const [boardedCount, setBoardedCount] = useState(0);
   const [currentStop, setCurrentStop] = useState('Waiting to start');
   const [tripNotification, setTripNotification] = useState('');
+  const [from, setFrom] = useState('Patiala');
+  const [to, setTo] = useState('Chandigarh');
+  const [stops, setStops] = useState<string[]>([]);
   const previousTripStatus = useRef('');
 
   useEffect(() => {
@@ -45,6 +48,9 @@ export default function TrackingPage() {
       .then((trip) => {
         const nextStatus = trip.status || 'SCHEDULED';
         setTripStatus(nextStatus);
+        setFrom(trip.from || 'Patiala');
+        setTo(trip.to || 'Chandigarh');
+        setStops(trip.stops || []);
         setBoardedCount((trip.passengers || []).filter((passenger: { boarded: boolean }) => passenger.boarded).length);
         setCurrentStop(nextStatus === 'SCHEDULED' ? 'Waiting to start' : trip.stops?.[trip.currentStopIndex] || 'Waiting to start');
 
@@ -56,6 +62,8 @@ export default function TrackingPage() {
             else if (Notification.permission === 'default') void Notification.requestPermission();
           }
         }
+        if (previousTripStatus.current !== 'DELAYED' && nextStatus === 'DELAYED') setTripNotification(`Trip delayed: ${trip.delayReason || 'The driver reported a delay.'}`);
+        if (previousTripStatus.current !== 'COMPLETED' && nextStatus === 'COMPLETED') setTripNotification('Trip completed. Live GPS tracking is now offline.');
 
         previousTripStatus.current = nextStatus;
       })
@@ -156,31 +164,11 @@ export default function TrackingPage() {
           <p className="mb-6 text-sm text-slate-500">{boardedCount} passengers boarded</p>
           
           <div className="relative border-l-2 border-slate-200 ml-4 space-y-8 pb-4">
-            <div className="relative pl-6">
+            {stops.map((stop, index) => <div className="relative pl-6" key={`${stop}-${index}`}>
               <CheckCircle2 size={24} className="absolute -left-[13px] top-0 text-green-500 bg-white" />
-              <h4 className="font-bold text-slate-900">Patiala (Boarding)</h4>
-              <p className="text-sm text-slate-500">{tripStatus === 'RUNNING' || tripStatus === 'DELAYED' || tripStatus === 'COMPLETED' ? 'Departure started' : 'Not started yet'}</p>
-            </div>
-
-            <div className="relative pl-6">
-              <CheckCircle2 size={24} className="absolute -left-[13px] top-0 text-green-500 bg-white" />
-              <h4 className="font-bold text-slate-900">Rajpura</h4>
-              <p className="text-sm text-slate-500">{tripStatus === 'RUNNING' || tripStatus === 'DELAYED' || tripStatus === 'COMPLETED' ? 'En route' : 'Waiting to start'}</p>
-            </div>
-
-            <div className="relative pl-6">
-              <div className="absolute -left-3 top-1 w-6 h-6 rounded-full bg-blue-100 border-4 border-white flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-              </div>
-              <h4 className="font-bold text-blue-600">{tripStatus === 'RUNNING' || tripStatus === 'DELAYED' ? 'En route to Zirakpur' : 'Route pending'}</h4>
-              <p className="text-sm text-slate-500">{tripStatus === 'RUNNING' || tripStatus === 'DELAYED' ? 'Live route updates enabled' : 'Bus is not moving yet'}</p>
-            </div>
-
-            <div className="relative pl-6">
-              <div className="absolute -left-2 top-1 w-4 h-4 rounded-full bg-slate-200 border-4 border-white"></div>
-              <h4 className="font-bold text-slate-400">Chandigarh (Drop-off)</h4>
-              <p className="text-sm text-slate-400">{tripStatus === 'RUNNING' || tripStatus === 'DELAYED' ? 'Scheduled soon' : 'Pending'}</p>
-            </div>
+              <h4 className="font-bold text-slate-900">{stop}{index === 0 ? ' (Boarding)' : index === stops.length - 1 ? ' (Drop-off)' : ''}</h4>
+              <p className="text-sm text-slate-500">{index <= (tripStatus === 'SCHEDULED' ? -1 : 0) ? 'Departure started' : index === 0 ? 'Waiting to start' : 'Scheduled stop'}</p>
+            </div>)}
           </div>
         </div>
       </div>

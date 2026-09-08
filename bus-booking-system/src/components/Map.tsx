@@ -26,13 +26,8 @@ const busIcon = new L.Icon({
 
 export default function LiveMap({ vehicleId = 'BUS-101' }: { vehicleId?: string }) {
   // Coordinates for the route
-  const patiala = [30.3398, 76.3869] as [number, number];
-  const rajpura = [30.4832, 76.5933] as [number, number];
-  const zirakpur = [30.6425, 76.8173] as [number, number];
-  const chandigarh = [30.7333, 76.7794] as [number, number];
-  
   const [currentBusLocation, setCurrentBusLocation] = useState<[number, number]>([30.5500, 76.7000]);
-  const [trackingData, setTrackingData] = useState<{ registrationNumber: string; currentStop: string; updatedAt: string } | null>(null);
+  const [trackingData, setTrackingData] = useState<{ registrationNumber: string; currentStop: string; updatedAt: string; route: { name: string; latitude: number; longitude: number }[] } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -67,15 +62,14 @@ export default function LiveMap({ vehicleId = 'BUS-101' }: { vehicleId?: string 
       
       {/* The Route Line */}
       <Polyline 
-        positions={[patiala, rajpura, zirakpur, chandigarh]} 
+        positions={trackingData?.route.map((stop) => [stop.latitude, stop.longitude] as [number, number]) ?? []}
         color="#2563eb" 
         weight={5} 
         opacity={0.7}
       />
       
       {/* Bus Stops */}
-      <Marker position={patiala} icon={customIcon}><Popup>Patiala (Source)</Popup></Marker>
-      <Marker position={chandigarh} icon={customIcon}><Popup>Chandigarh (Destination)</Popup></Marker>
+      {trackingData?.route.map((stop, index) => <Marker key={stop.name} position={[stop.latitude, stop.longitude]} icon={customIcon}><Popup>{stop.name} ({index === 0 ? 'Source' : index === trackingData.route.length - 1 ? 'Destination' : 'Stop'})</Popup></Marker>)}
       
       {/* The Live Bus */}
       <Marker position={currentBusLocation} icon={busIcon}>

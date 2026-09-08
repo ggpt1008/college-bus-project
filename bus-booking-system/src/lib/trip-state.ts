@@ -30,6 +30,10 @@ export type TripState = {
   liveTrackingAvailable: boolean;
   events: TripEvent[];
   updatedAt: string;
+  from: string;
+  to: string;
+  operator: string;
+  busType: string;
 };
 
 const initialState: TripState = {
@@ -56,6 +60,10 @@ const initialState: TripState = {
   liveTrackingAvailable: false,
   events: [],
   updatedAt: new Date().toISOString(),
+  from: 'Patiala',
+  to: 'Chandigarh',
+  operator: 'OmniBus Elite',
+  busType: 'AC Express',
 };
 
 const globalStore = globalThis as typeof globalThis & { omniBusTripState?: TripState };
@@ -77,10 +85,43 @@ export function addTripEvent(state: TripState, type: TripEvent['type'], message:
   state.events = state.events.slice(0, 30);
 }
 
-export function registerTripPassenger(input: { name: string; seatNumber: string; pnr: string }) {
+export function registerTripPassenger(input: {
+  name: string;
+  seatNumber: string;
+  pnr: string;
+  vehicleId?: string;
+  registrationNumber?: string;
+  from?: string;
+  to?: string;
+  operator?: string;
+  busType?: string;
+  stops?: string[];
+  scheduledDeparture?: string;
+  scheduledArrival?: string;
+}) {
+  const vehicleId = input.vehicleId;
   return updateTripState((trip) => {
+    const assignmentChanged = vehicleId && (vehicleId !== trip.vehicleId || trip.status === 'COMPLETED');
+    if (assignmentChanged) {
+      trip.vehicleId = vehicleId;
+      trip.registrationNumber = input.registrationNumber || trip.registrationNumber;
+      trip.tripId = `TRIP-${vehicleId}`;
+      trip.from = input.from || trip.from;
+      trip.to = input.to || trip.to;
+      trip.operator = input.operator || trip.operator;
+      trip.busType = input.busType || trip.busType;
+      trip.stops = input.stops?.length ? input.stops : [trip.from, trip.to];
+      trip.currentStopIndex = 0;
+      trip.status = 'SCHEDULED';
+      trip.liveTrackingAvailable = false;
+      trip.delayMinutes = 0;
+      trip.delayReason = null;
+      trip.passengers = [];
+    }
+    if (input.scheduledDeparture) trip.scheduledDeparture = input.scheduledDeparture;
+    if (input.scheduledArrival) trip.scheduledArrival = input.scheduledArrival;
     if (trip.passengers.some((passenger) => passenger.pnr === input.pnr)) return;
-    trip.passengers.push({ id: Math.max(0, ...trip.passengers.map((passenger) => passenger.id)) + 1, ...input, boarded: false });
+    trip.passengers.push({ id: Math.max(0, ...trip.passengers.map((passenger) => passenger.id)) + 1, name: input.name, seatNumber: input.seatNumber, pnr: input.pnr, boarded: false });
     addTripEvent(trip, 'BOOKING', `${input.name} booked seat ${input.seatNumber}`);
   });
 }

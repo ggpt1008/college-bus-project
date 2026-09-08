@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bus, MapPin, Navigation, AlertTriangle, CheckCircle2, Users, Clock, Search, QrCode, UserCheck, X } from 'lucide-react';
 
 type Passenger = { id: number; name: string; seatNumber: string; pnr: string; boarded: boolean };
@@ -25,6 +25,25 @@ export default function DriverDashboard() {
   const [verificationMessage, setVerificationMessage] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [vehicleId, setVehicleId] = useState('BUS-101');
+  const [registrationNumber, setRegistrationNumber] = useState('PB-10-AB-1234');
+  const [from, setFrom] = useState('Patiala');
+  const [to, setTo] = useState('Chandigarh');
+
+  useEffect(() => {
+    fetch('/api/trip', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((trip) => {
+        setTripStatus(trip.status);
+        setCurrentStop(trip.stops[trip.currentStopIndex]);
+        setPassengers(trip.passengers);
+        setVehicleId(trip.vehicleId);
+        setRegistrationNumber(trip.registrationNumber);
+        setFrom(trip.from);
+        setTo(trip.to);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const boardedCount = passengers.filter((passenger) => passenger.boarded).length;
 
@@ -57,14 +76,24 @@ export default function DriverDashboard() {
     }, 2500);
   };
 
-  const handleStartTrip = () => {
-    setTripStatus('RUNNING');
-    alert("Trip started! GPS tracking is now live for passengers.");
+  const updateTrip = (action: string) => {
+    void fetch('/api/trip', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
+      .then((response) => response.json())
+      .then((trip) => {
+        setTripStatus(trip.status);
+        setCurrentStop(trip.stops[trip.currentStopIndex]);
+        setPassengers(trip.passengers);
+        setVehicleId(trip.vehicleId);
+        setRegistrationNumber(trip.registrationNumber);
+        setFrom(trip.from);
+        setTo(trip.to);
+      });
   };
 
+  const handleStartTrip = () => updateTrip('START');
+
   const handleUpdateLocation = () => {
-    setCurrentStop('Rajpura (En route)');
-    alert("Location updated to Rajpura. Passengers will see this on their tracking map.");
+    updateTrip('NEXT_STOP');
   };
 
   return (
@@ -92,7 +121,7 @@ export default function DriverDashboard() {
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Bus</p>
-            <p className="font-bold text-white font-mono">PB-10-AB-1234</p>
+            <p className="font-bold text-white font-mono">{registrationNumber}</p>
             <p className="mt-1 text-xs text-slate-400">{currentStop}</p>
           </div>
         </div>
@@ -112,12 +141,12 @@ export default function DriverDashboard() {
           <div className="relative border-l-2 border-dashed border-slate-200 ml-3 space-y-6 my-6">
             <div className="relative pl-6">
               <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-600 border-2 border-white"></div>
-              <h4 className="font-bold text-slate-900 text-sm">Patiala</h4>
+              <h4 className="font-bold text-slate-900 text-sm">{from}</h4>
               <p className="text-xs text-slate-500">Boarding Point</p>
             </div>
             <div className="relative pl-6">
               <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-slate-300 border-2 border-white"></div>
-              <h4 className="font-bold text-slate-900 text-sm">Chandigarh</h4>
+              <h4 className="font-bold text-slate-900 text-sm">{to}</h4>
               <p className="text-xs text-slate-500">Drop-off Point</p>
             </div>
           </div>
@@ -155,7 +184,7 @@ export default function DriverDashboard() {
                   <AlertTriangle size={24} />
                   <span className="text-xs">Report Delay</span>
                 </button>
-                <button onClick={() => setTripStatus('COMPLETED')} className="py-4 bg-green-100 text-green-700 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all border border-green-200">
+                <button onClick={() => updateTrip('COMPLETE')} className="py-4 bg-green-100 text-green-700 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all border border-green-200">
                   <CheckCircle2 size={24} />
                   <span className="text-xs">Complete Trip</span>
                 </button>
@@ -170,7 +199,7 @@ export default function DriverDashboard() {
         <div className="fixed inset-0 z-[100] flex justify-end bg-slate-950/60 backdrop-blur-sm">
           <section className="h-full w-full max-w-xl overflow-y-auto bg-slate-900 p-5 text-slate-200 shadow-2xl sm:p-7" role="dialog" aria-modal="true" aria-labelledby="manifest-title">
             <div className="sticky top-0 z-10 -mx-5 border-b border-slate-800 bg-slate-900 px-5 pb-5 sm:-mx-7 sm:px-7">
-              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-400">PB-10-AB-1234</p><h2 id="manifest-title" className="mt-1 text-2xl font-extrabold text-white">Passenger verification</h2><p className="mt-1 text-sm text-slate-400">Patiala to Chandigarh</p></div><button type="button" onClick={() => setIsManifestOpen(false)} aria-label="Close passenger manifest" className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X size={20} /></button></div>
+              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-400">{vehicleId} · {registrationNumber}</p><h2 id="manifest-title" className="mt-1 text-2xl font-extrabold text-white">Passenger verification</h2><p className="mt-1 text-sm text-slate-400">{from} to {to}</p></div><button type="button" onClick={() => setIsManifestOpen(false)} aria-label="Close passenger manifest" className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X size={20} /></button></div>
               <div className="mt-5 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Boarding progress</p><p className="mt-1 text-xl font-extrabold text-white">{boardedCount} <span className="text-slate-500">/ {passengers.length}</span></p></div><div className="h-2 w-32 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(boardedCount / passengers.length) * 100}%` }} /></div></div>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><Search size={18} className="absolute left-3 top-3 text-slate-500" /><input value={pnrSearch} onChange={(event) => verifyPnr(event.target.value)} placeholder="Enter PNR to verify" aria-label="Enter PNR to verify" className="h-12 w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-3 font-mono uppercase text-white outline-none placeholder:text-slate-600 focus:border-blue-400" /></label><button type="button" onClick={startScan} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-bold text-white hover:bg-blue-500"><QrCode size={18} /> Scan Ticket QR</button></div>
               {verificationMessage && <p className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm font-bold text-emerald-400"><UserCheck size={17} /> {verificationMessage}</p>}

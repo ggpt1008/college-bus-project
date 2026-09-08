@@ -6,9 +6,13 @@ export function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json() as { action?: string; pnr?: string; status?: TripStatus; delayMinutes?: number; delayReason?: string; passenger?: { name?: string; seatNumber?: string; pnr?: string } };
-  if (body.action === 'BOOK' && body.passenger?.name && body.passenger.seatNumber && body.passenger.pnr) {
-    return NextResponse.json(registerTripPassenger({ name: body.passenger.name, seatNumber: body.passenger.seatNumber, pnr: body.passenger.pnr }));
+  const body = await request.json() as { action?: string; pnr?: string; status?: TripStatus; delayMinutes?: number; delayReason?: string; vehicleId?: string; registrationNumber?: string; from?: string; to?: string; operator?: string; busType?: string; stops?: string[]; scheduledDeparture?: string; scheduledArrival?: string; passenger?: { name?: string; seatNumber?: string; pnr?: string }; passengers?: { name?: string; seatNumber?: string; pnr?: string }[] };
+  if (body.action === 'BOOK') {
+    const passengers = body.passengers ?? (body.passenger ? [body.passenger] : []);
+    if (passengers.length && passengers.every((passenger) => passenger.name && passenger.seatNumber && passenger.pnr)) {
+      passengers.forEach((passenger) => registerTripPassenger({ name: passenger.name!, seatNumber: passenger.seatNumber!, pnr: passenger.pnr!, vehicleId: body.vehicleId, registrationNumber: body.registrationNumber, from: body.from, to: body.to, operator: body.operator, busType: body.busType, stops: body.stops, scheduledDeparture: body.scheduledDeparture, scheduledArrival: body.scheduledArrival }));
+      return NextResponse.json(getTripState());
+    }
   }
 
   const currentTrip = getTripState();

@@ -16,10 +16,14 @@ type BookingDraft = {
   departure: string;
   arrival: string;
   bus: string;
+  busType?: string;
   selectedSeats: string[];
   farePerSeat: number;
   totalFare: number;
   passenger: string;
+  tripStops?: string[];
+  scheduledDeparture?: string;
+  scheduledArrival?: string;
 };
 
 const banks = ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'PNB'];
@@ -78,7 +82,7 @@ export default function PaymentPage() {
   }, []);
 
   const selectedSeatCount = draft?.selectedSeats?.length ?? 1;
-  const baseFare = (draft?.farePerSeat ?? 650) * selectedSeatCount;
+  const baseFare = draft?.totalFare ?? (draft?.farePerSeat ?? 650) * selectedSeatCount;
   const gst = Math.round(baseFare * 0.05);
   const platformFee = selectedSeatCount * 15;
   const subtotal = baseFare + gst + platformFee;
@@ -148,11 +152,20 @@ export default function PaymentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'BOOK',
-          passenger: {
-            name: draft.passenger,
-            seatNumber: draft.selectedSeats[0],
-            pnr,
-          },
+          vehicleId: draft.vehicleId,
+          registrationNumber: draft.registrationNumber,
+          from: draft.from,
+          to: draft.to,
+          operator: draft.bus,
+          busType: draft.busType,
+          scheduledDeparture: draft.scheduledDeparture,
+          scheduledArrival: draft.scheduledArrival,
+          stops: draft.tripStops,
+          passengers: draft.selectedSeats.map((seatNumber, index) => ({
+            name: index === 0 ? draft.passenger : `${draft.passenger} - Guest ${index + 1}`,
+            seatNumber,
+            pnr: index === 0 ? pnr : `${pnr}-${index + 1}`,
+          })),
         }),
       });
     }

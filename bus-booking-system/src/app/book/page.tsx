@@ -17,7 +17,7 @@ type SeatType = {
 const TOTAL_ROWS = 10;
 const TOTAL_COLS = ['A', 'B', 'C', 'D'];
 
-function buildSeatLayout(availableSeatCount: number): SeatType[] {
+function buildSeatLayout(availableSeatCount: number, seatPrice: number): SeatType[] {
   const normalizedAvailable = Math.max(2, Math.min(40, Math.round(availableSeatCount / 2) * 2));
   const seats: SeatType[] = [];
   const pairOptions: Array<{ row: number; cols: string[] }> = [];
@@ -47,7 +47,7 @@ function buildSeatLayout(availableSeatCount: number): SeatType[] {
         col,
         type: 'STANDARD',
         status: 'BOOKED',
-        price: 500,
+        price: seatPrice,
       };
       seats.push(baseSeat);
     });
@@ -62,7 +62,7 @@ function buildSeatLayout(availableSeatCount: number): SeatType[] {
       if (seat) {
         seat.status = 'AVAILABLE';
         seat.type = pairAssignments.get(pairIndex) ?? 'STANDARD';
-        seat.price = seat.type === 'WOMEN_PRIORITY' || seat.type === 'ELDERLY_PRIORITY' ? 550 : 500;
+        seat.price = seatPrice;
       }
     });
   };
@@ -112,7 +112,7 @@ function BookingPageContent() {
     () => BUS_FLEET.find((bus) => bus.vehicleId === vehicleId) ?? BUS_FLEET[0],
     [vehicleId],
   );
-  const seatLayout = useMemo(() => buildSeatLayout(availableSeatCount), [availableSeatCount]);
+  const seatLayout = useMemo(() => buildSeatLayout(availableSeatCount, selectedBus.price), [availableSeatCount, selectedBus.price]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [isLocking, setIsLocking] = useState(false);
 
@@ -153,11 +153,15 @@ function BookingPageContent() {
       departure: `${selectedBus.departure} AM`,
       arrival: `${selectedBus.arrival} AM`,
       bus: selectedBus.operator,
+      busType: selectedBus.type,
       seatCount: selectedSeats.length,
       selectedSeats,
       farePerSeat: selectedBus.price,
       totalFare,
       passenger: 'Girikshit',
+      tripStops: selectedBus.route.map((stop) => stop.name),
+      scheduledDeparture: `2026-09-03T${selectedBus.departure}:00+05:30`,
+      scheduledArrival: `2026-09-03T${selectedBus.arrival}:00+05:30`,
     };
 
     localStorage.setItem('bookingDraft', JSON.stringify(draft));
