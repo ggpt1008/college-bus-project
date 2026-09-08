@@ -29,6 +29,7 @@ export default function DriverDashboardPage() {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [issueSent, setIssueSent] = useState(false);
+  const [tripError, setTripError] = useState('');
   const [delayReason, setDelayReason] = useState('Traffic congestion');
   const [assignmentNotice, setAssignmentNotice] = useState('');
   const previousBookingEventId = useRef(0);
@@ -105,8 +106,13 @@ export default function DriverDashboardPage() {
   };
 
   const updateTrip = async (action: string, details: { delayMinutes?: number; delayReason?: string } = {}) => {
+    setTripError('');
     const response = await fetch('/api/trip', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...details }) });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      setTripError(payload?.error || 'The trip update could not be saved. Try again.');
+      return false;
+    }
     const trip = await response.json();
     setTripStatus(trip.status);
     setCurrentStop(trip.stops[trip.currentStopIndex]);
@@ -119,6 +125,7 @@ export default function DriverDashboardPage() {
     setBusType(trip.busType);
     setScheduledDeparture(trip.scheduledDeparture);
     setScheduledArrival(trip.scheduledArrival);
+    return true;
   };
 
   const startOrEndTrip = () => void updateTrip(tripStatus === 'RUNNING' ? 'COMPLETE' : 'START');
@@ -147,6 +154,7 @@ export default function DriverDashboardPage() {
         </section>
 
         {assignmentNotice && <section className="flex items-start gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-blue-100"><BellIcon /><div className="min-w-0 flex-1"><p className="text-sm font-bold">New booking assigned</p><p className="mt-1 text-xs text-blue-100/75">{assignmentNotice}</p></div><button type="button" onClick={() => setAssignmentNotice('')} className="text-xs font-bold text-blue-200 underline">Dismiss</button></section>}
+        {tripError && <p role="alert" className="rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm font-semibold text-red-200">{tripError}</p>}
 
         <section className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4 text-amber-100">
           <div className="flex items-start gap-3"><AlertTriangle size={20} className="mt-0.5 shrink-0 text-amber-300" /><div className="min-w-0"><p className="text-sm font-bold">Pre-trip checklist pending</p><p className="mt-1 text-xs leading-5 text-amber-200/70">Complete the vehicle inspection before starting GPS broadcast.</p></div><button type="button" className="ml-auto shrink-0 text-xs font-bold underline underline-offset-4" onClick={() => setCurrentStop('Vehicle inspection complete')}>Mark done</button></div>
@@ -176,7 +184,7 @@ export default function DriverDashboardPage() {
       {activeTool && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 text-center shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">{activeTool}</h2><button type="button" onClick={() => setActiveTool(null)} aria-label={`Close ${activeTool}`} className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><p className="mt-6 text-sm leading-6 text-slate-400">{activeTool === 'Trip history' ? 'Your completed routes and recent assignments will appear here.' : 'This driver tool is connected and ready for operational data.'}</p><button type="button" onClick={() => setActiveTool(null)} className="btn-pill btn-primary mt-6 w-full py-3">Close</button></div></div>}
       {selectedPassenger && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-red-300">Passenger status</p><h2 className="mt-1 text-xl font-extrabold">{selectedPassenger.name}</h2><p className="mt-1 text-sm text-slate-500">Seat {selectedPassenger.seatNumber} • {selectedPassenger.pnr}</p></div><button type="button" onClick={() => setSelectedPassenger(null)} aria-label="Close passenger status" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><p className="mt-6 text-sm text-slate-300">Current status: <strong>{selectedPassenger.boarded ? 'Boarded' : 'Pending'}</strong></p><div className="mt-5 grid gap-3"><button type="button" onClick={() => updateBoarding(selectedPassenger.pnr, true)} className="btn-pill btn-primary w-full py-3"><Check size={18} /> Mark boarded</button><button type="button" onClick={() => updateBoarding(selectedPassenger.pnr, false)} className="btn-pill w-full border border-white/10 bg-[#0b1225] py-3 text-slate-200 hover:border-slate-500">Mark not boarded</button></div></div></div>}
       {isScannerOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-5 text-center shadow-2xl"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm font-bold"><QrCode size={18} className="text-red-400" /> Scan passenger ticket</div><button type="button" onClick={() => { setIsScannerOpen(false); setIsScanning(false); }} aria-label="Close scanner" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div><div className="relative mt-5 flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-[#050914]"><div className="absolute inset-8 rounded-xl border-2 border-red-400/70"><span className="absolute -left-1 -top-1 h-7 w-7 border-l-4 border-t-4 border-red-400" /><span className="absolute -right-1 -top-1 h-7 w-7 border-r-4 border-t-4 border-red-400" /><span className="absolute -bottom-1 -left-1 h-7 w-7 border-b-4 border-l-4 border-red-400" /><span className="absolute -bottom-1 -right-1 h-7 w-7 border-b-4 border-r-4 border-red-400" /></div>{isScanning ? <><QrCode size={104} className="text-slate-500" /><span className="absolute left-10 right-10 top-1/2 h-0.5 animate-pulse bg-red-400 shadow-[0_0_14px_#f87171]" /></> : <CheckCircle2 size={74} className="text-emerald-400" />}</div><p className="mt-4 font-bold">{isScanning ? 'Scanning ticket...' : scanResult ? 'Ticket verified' : 'Scanner ready'}</p><p className="mt-1 text-sm text-slate-500">{isScanning ? 'Hold the passenger QR inside the frame' : scanResult || 'The simulated scanner verifies the next pending passenger.'}</p>{!isScanning && <button type="button" onClick={startScan} className="btn-pill btn-primary mt-5 w-full py-3"><ScanLine size={18} /> Scan again</button>}</div></div>}
-      {isIssueOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-amber-300">Driver support</p><h2 className="mt-1 text-xl font-extrabold">Report a delay</h2></div><button type="button" onClick={() => setIsIssueOpen(false)} aria-label="Close delay dialog" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div>{issueSent ? <div className="py-8 text-center"><CheckCircle2 size={42} className="mx-auto text-emerald-400" /><p className="mt-3 font-bold">Delay shared with passengers and admin</p><p className="mt-1 text-sm text-slate-500">The trip remains active while operations monitors it.</p></div> : <><label className="mt-6 block text-sm font-bold text-slate-300">Reason<select value={delayReason} onChange={(event) => setDelayReason(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1225] px-4 py-3 text-white outline-none"><option>Traffic congestion</option><option>Road block</option><option>Vehicle inspection</option><option>Passenger assistance</option></select></label><button type="button" disabled={tripStatus !== 'RUNNING' && tripStatus !== 'DELAYED'} onClick={() => { void updateTrip('DELAY', { delayMinutes: 15, delayReason }).then(() => setIssueSent(true)); }} className="btn-pill btn-primary mt-5 w-full py-3 disabled:cursor-not-allowed disabled:opacity-50">Submit delay</button></>}</div></div>}
+      {isIssueOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm"><div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#10182d] p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-amber-300">Driver support</p><h2 className="mt-1 text-xl font-extrabold">Report a delay</h2></div><button type="button" onClick={() => setIsIssueOpen(false)} aria-label="Close delay dialog" className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={19} /></button></div>{issueSent ? <div className="py-8 text-center"><CheckCircle2 size={42} className="mx-auto text-emerald-400" /><p className="mt-3 font-bold">Delay shared with passengers and admin</p><p className="mt-1 text-sm text-slate-500">The trip remains active while operations monitors it.</p></div> : <><label className="mt-6 block text-sm font-bold text-slate-300">Reason<select value={delayReason} onChange={(event) => setDelayReason(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b1225] px-4 py-3 text-white outline-none"><option>Traffic congestion</option><option>Road block</option><option>Vehicle inspection</option><option>Passenger assistance</option></select></label><button type="button" disabled={tripStatus !== 'RUNNING' && tripStatus !== 'DELAYED'} onClick={async () => { const success = await updateTrip('DELAY', { delayMinutes: 15, delayReason }); if (success) setIssueSent(true); }} className="btn-pill btn-primary mt-5 w-full py-3 disabled:cursor-not-allowed disabled:opacity-50">Submit delay</button></>}</div></div>}
     </main>
   );
 }
@@ -200,5 +208,5 @@ function TripRow({ route, time, status }: { route: string; time: string; status:
 function formatTripTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
 }

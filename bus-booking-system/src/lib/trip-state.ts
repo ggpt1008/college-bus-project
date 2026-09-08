@@ -66,11 +66,20 @@ const initialState: TripState = {
   busType: 'AC Express',
 };
 
-const globalStore = globalThis as typeof globalThis & { omniBusTripState?: TripState };
+const globalStore = globalThis as typeof globalThis & { omniBusTripState?: TripState; omniBusEventSequence?: number };
 
 export function getTripState() {
   if (!globalStore.omniBusTripState) globalStore.omniBusTripState = structuredClone(initialState);
-  return globalStore.omniBusTripState;
+  const trip = globalStore.omniBusTripState;
+  trip.events ??= [];
+  trip.delayMinutes ??= 0;
+  trip.delayReason ??= null;
+  trip.liveTrackingAvailable ??= false;
+  trip.from ??= initialState.from;
+  trip.to ??= initialState.to;
+  trip.operator ??= initialState.operator;
+  trip.busType ??= initialState.busType;
+  return trip;
 }
 
 export function updateTripState(update: (state: TripState) => void) {
@@ -81,7 +90,9 @@ export function updateTripState(update: (state: TripState) => void) {
 }
 
 export function addTripEvent(state: TripState, type: TripEvent['type'], message: string) {
-  state.events.unshift({ id: Date.now(), type, message, createdAt: new Date().toISOString() });
+  const nextEventId = Math.max(Date.now(), (globalStore.omniBusEventSequence ?? 0) + 1);
+  globalStore.omniBusEventSequence = nextEventId;
+  state.events.unshift({ id: nextEventId, type, message, createdAt: new Date().toISOString() });
   state.events = state.events.slice(0, 30);
 }
 
