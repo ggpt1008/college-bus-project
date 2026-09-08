@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
-import { BusFront, MapPin, Clock, CheckCircle2, Search, ArrowLeft } from 'lucide-react';
+import { Bell, BusFront, MapPin, Clock, CheckCircle2, Search, ArrowLeft, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const LiveMap = dynamic(() => import('@/components/Map'), {
@@ -28,6 +28,9 @@ export default function TrackingPage() {
   const [from, setFrom] = useState('Patiala');
   const [to, setTo] = useState('Chandigarh');
   const [stops, setStops] = useState<string[]>([]);
+  const [tripEvents, setTripEvents] = useState<{ id: number; type: string; message: string; createdAt: string }[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [lastSeenEventId, setLastSeenEventId] = useState(0);
   const previousTripStatus = useRef('');
 
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function TrackingPage() {
         setFrom(trip.from || 'Patiala');
         setTo(trip.to || 'Chandigarh');
         setStops(trip.stops || []);
+        setTripEvents(trip.events || []);
         setBoardedCount((trip.passengers || []).filter((passenger: { boarded: boolean }) => passenger.boarded).length);
         setCurrentStop(nextStatus === 'SCHEDULED' ? 'Waiting to start' : trip.stops?.[trip.currentStopIndex] || 'Waiting to start');
 
@@ -86,6 +90,12 @@ export default function TrackingPage() {
     if (savedPnr && nextPnr === savedPnr) setVehicleId(booking.vehicleId || 'BUS-101');
   };
 
+  const unreadNotifications = tripEvents.filter((event) => event.id > lastSeenEventId).length;
+  const openNotifications = () => {
+    setIsNotificationsOpen((open) => !open);
+    if (!isNotificationsOpen && tripEvents[0]) setLastSeenEventId(tripEvents[0].id);
+  };
+
   const statusText = tripStatus === 'RUNNING'
     ? 'GPS Active'
     : tripStatus === 'COMPLETED'
@@ -111,14 +121,25 @@ export default function TrackingPage() {
           </h1>
           <p className="text-slate-500 mt-1 font-mono">PNR: {pnr || 'Not available'} • {vehicleId}</p>
         </div>
-        <div className={`${tripStatus === 'RUNNING' ? 'bg-green-100 text-green-700' : tripStatus === 'COMPLETED' ? 'bg-slate-200 text-slate-700' : tripStatus === 'DELAYED' ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'} px-4 py-2 rounded-full font-bold flex items-center gap-2 text-sm`}>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={openNotifications} aria-label="Open passenger notifications" className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-blue-300 hover:text-blue-600">
+            <Bell size={19} />
+            {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{Math.min(unreadNotifications, 9)}</span>}
+          </button>
+          <div className={`${tripStatus === 'RUNNING' ? 'bg-green-100 text-green-700' : tripStatus === 'COMPLETED' ? 'bg-slate-200 text-slate-700' : tripStatus === 'DELAYED' ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'} px-4 py-2 rounded-full font-bold flex items-center gap-2 text-sm`}>
           <span className="relative flex h-3 w-3">
             <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${tripStatus === 'RUNNING' ? 'bg-green-400 animate-ping' : 'bg-amber-400'}`}></span>
             <span className={`relative inline-flex rounded-full h-3 w-3 ${tripStatus === 'RUNNING' ? 'bg-green-500' : tripStatus === 'COMPLETED' ? 'bg-slate-500' : 'bg-amber-500'}`}></span>
           </span>
           {statusText}
+          </div>
         </div>
       </div>
+
+      {isNotificationsOpen && <section className="max-w-7xl mx-auto mb-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm" aria-label="Passenger notifications">
+        <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-blue-600">Notifications</p><h2 className="mt-1 text-lg font-bold text-slate-900">Trip updates</h2></div><button type="button" onClick={() => setIsNotificationsOpen(false)} aria-label="Close notifications" className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button></div>
+        <div className="mt-4 space-y-2">{tripEvents.length ? tripEvents.slice(0, 8).map((event) => <div key={event.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><p className="text-sm font-semibold text-slate-800">{event.message}</p><p className="mt-1 text-xs text-slate-500">{new Date(event.createdAt).toLocaleTimeString()}</p></div>) : <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No trip updates yet. Notifications will appear when the driver starts, moves, delays, or completes the trip.</p>}</div>
+      </section>}
 
       <div className="max-w-7xl mx-auto mb-6 bg-white border border-slate-200 p-5 shadow-sm">
         <form onSubmit={checkBooking} className="flex flex-col gap-3 sm:flex-row">

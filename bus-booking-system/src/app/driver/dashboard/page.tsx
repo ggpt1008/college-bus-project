@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { AlertTriangle, BarChart3, BusFront, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, FileText, History, MapPin, QrCode, ScanLine, ShieldCheck, Signal, UserRound, Users, Wallet, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, BarChart3, Bell, BusFront, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, FileText, History, MapPin, QrCode, ScanLine, ShieldCheck, Signal, UserRound, Users, Wallet, X } from 'lucide-react';
 
 type Passenger = { name: string; seatNumber: string; pnr: string; boarded: boolean };
 
@@ -30,6 +30,8 @@ export default function DriverDashboardPage() {
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [issueSent, setIssueSent] = useState(false);
   const [delayReason, setDelayReason] = useState('Traffic congestion');
+  const [assignmentNotice, setAssignmentNotice] = useState('');
+  const previousBookingEventId = useRef(0);
   const [currentStop, setCurrentStop] = useState('Patiala bus stand');
   const [vehicleId, setVehicleId] = useState('BUS-101');
   const [registrationNumber, setRegistrationNumber] = useState('PB-10-AB-1234');
@@ -44,6 +46,9 @@ export default function DriverDashboardPage() {
     const loadTrip = () => fetch('/api/trip', { cache: 'no-store' })
       .then((response) => response.json())
       .then((trip) => {
+        const latestBooking = trip.events?.find((event: { type: string }) => event.type === 'BOOKING');
+        if (latestBooking && previousBookingEventId.current && previousBookingEventId.current !== latestBooking.id) setAssignmentNotice(`New assignment received: ${trip.vehicleId} · ${trip.from} to ${trip.to}`);
+        if (latestBooking) previousBookingEventId.current = latestBooking.id;
         setTripStatus(trip.status);
         setPassengers(trip.passengers);
         setCurrentStop(trip.stops[trip.currentStopIndex]);
@@ -141,6 +146,8 @@ export default function DriverDashboardPage() {
           <SummaryStat icon={<Wallet size={17} />} value="₹1,850" label="Today" />
         </section>
 
+        {assignmentNotice && <section className="flex items-start gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-blue-100"><BellIcon /><div className="min-w-0 flex-1"><p className="text-sm font-bold">New booking assigned</p><p className="mt-1 text-xs text-blue-100/75">{assignmentNotice}</p></div><button type="button" onClick={() => setAssignmentNotice('')} className="text-xs font-bold text-blue-200 underline">Dismiss</button></section>}
+
         <section className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4 text-amber-100">
           <div className="flex items-start gap-3"><AlertTriangle size={20} className="mt-0.5 shrink-0 text-amber-300" /><div className="min-w-0"><p className="text-sm font-bold">Pre-trip checklist pending</p><p className="mt-1 text-xs leading-5 text-amber-200/70">Complete the vehicle inspection before starting GPS broadcast.</p></div><button type="button" className="ml-auto shrink-0 text-xs font-bold underline underline-offset-4" onClick={() => setCurrentStop('Vehicle inspection complete')}>Mark done</button></div>
         </section>
@@ -176,6 +183,10 @@ export default function DriverDashboardPage() {
 
 function SummaryStat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return <div className="rounded-2xl border border-white/10 bg-[#10182d] p-3"><div className="flex items-center gap-1.5 text-slate-500">{icon}<span className="text-[10px] font-bold uppercase tracking-wider">{label}</span></div><p className="mt-2 text-lg font-extrabold text-white">{value}</p></div>;
+}
+
+function BellIcon() {
+  return <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-400/15 text-blue-300"><Bell size={17} /></span>;
 }
 
 function ToolCard({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {

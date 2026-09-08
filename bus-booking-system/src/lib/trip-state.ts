@@ -117,6 +117,7 @@ export function registerTripPassenger(input: {
       trip.delayMinutes = 0;
       trip.delayReason = null;
       trip.passengers = [];
+      trip.events = [];
     }
     if (input.scheduledDeparture) trip.scheduledDeparture = input.scheduledDeparture;
     if (input.scheduledArrival) trip.scheduledArrival = input.scheduledArrival;
